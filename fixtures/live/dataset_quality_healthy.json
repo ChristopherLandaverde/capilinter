@@ -1,0 +1,63 @@
+{
+  "web": [
+    {
+      "event_name": "Purchase",
+      "event_match_quality": {
+        "composite_score": 8.1,
+        "match_key_feedback": [
+          {
+            "identifier": "email",
+            "coverage": {
+              "percentage": 96
+            }
+          },
+          {
+            "identifier": "phone",
+            "coverage": {
+              "percentage": 71
+            }
+          },
+          {
+            "identifier": "fbc",
+            "coverage": {
+              "percentage": 64
+            }
+          },
+          {
+            "identifier": "user_agent",
+            "coverage": {
+              "percentage": 100
+            }
+          }
+        ],
+        "diagnostics": []
+      },
+      "event_coverage": {
+        "percentage": 82,
+        "goal_percentage": 75,
+        "description": "Synthetic fixture."
+      },
+      "dedupe_key_feedback": [
+        {
+          "dedupe_key": "event_id",
+          "browser_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "server_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "overall_browser_coverage_from_dedupe_key": {
+            "percentage": 91.4,
+            "description": "Synthetic fixture."
+          }
+        }
+      ],
+      "data_freshness": {
+        "upload_frequency": "real_time",
+        "description": "Synthetic fixture."
+      }
+    }
+  ]
+}

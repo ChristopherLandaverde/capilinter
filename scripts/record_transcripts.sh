@@ -30,3 +30,15 @@ record 07-hash-dob       hash "2/16/1997" --field db
 record 08-hash-refused   hash "United States" --field country
 record 09-hash-repair     hash "Jane.Doe@Example.com"
 record 10-inspect-repaired inspect fixtures/unhashed_pii_repaired.json
+record 11-explain        explain MISSING_EVENT_ID
+
+# L3 live read in fixture mode: a synthetic Dataset Quality API response, a placeholder token, no network.
+{
+  echo '$ CAPILINTER_LIVE_FIXTURE=fixtures/live/dataset_quality_issues.json META_ACCESS_TOKEN=<synthetic> capilinter live quality --dataset-id 123456789'
+  CAPILINTER_LIVE_FIXTURE=fixtures/live/dataset_quality_issues.json META_ACCESS_TOKEN=synthetic-not-a-real-token \
+    capilinter live quality --dataset-id 123456789 2>&1
+  echo "[exit $?]"
+} > "$out/12-live-quality.txt"
+
+# A real MCP session against the installed capilinter-mcp server.
+python3 scripts/record_mcp_session.py > "$out/13-mcp-session.txt"

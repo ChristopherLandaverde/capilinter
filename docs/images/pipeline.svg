@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="380" viewBox="0 0 880 380" role="img" aria-labelledby="t d">
   <title id="t">Where CAPILinter sits in a server-side tracking pipeline</title>
-  <desc id="d">The browser pixel sends an event with an event_id to Meta. Your server or sGTM container builds the Conversions API payload for the same event. CAPILinter reads that payload offline and checks 21 rules traced to Meta's docs. Exit 0: send it to the Meta Conversions API, where Meta deduplicates it against the pixel event by event_name and event_id. Exit 1: a fix list with the issue code, the field and the repair. CAPILinter never sends events.</desc>
+  <desc id="d">The browser pixel sends an event with an event_id to Meta. Your server or sGTM container builds the Conversions API payload for the same event. CAPILinter reads that payload offline and checks 22 offline checks traced to Meta's docs. Exit 0: send it to the Meta Conversions API, where Meta deduplicates it against the pixel event by event_name and event_id. Exit 1: a fix list with the issue code, the field and the repair. CAPILinter never sends events.</desc>
   <style>
     .sans { font-family: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
     .mono { font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -50,7 +50,7 @@
   <rect x="428" y="188" width="6" height="97" rx="3" fill="#1E3A8A"/>
   <text x="450" y="212" class="mono label muted">OFFLINE CHECK</text>
   <text x="450" y="238" class="sans name ink">CAPILinter</text>
-  <text x="450" y="260" class="mono code accent">21 rules · Meta docs</text>
+  <text x="450" y="260" class="mono code accent">22 checks · Meta docs</text>
   <text x="450" y="276" class="mono code muted">never sends events</text>
   <line x1="391" y1="236" x2="426" y2="236" stroke="#57534E" stroke-width="1.5" marker-end="url(#arrow)"/>
 

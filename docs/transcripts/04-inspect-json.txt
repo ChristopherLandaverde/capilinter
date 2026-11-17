@@ -1,5 +1,6 @@
 $ capilinter inspect fixtures/missing_event_id.json --json
 {
+  "schema_version": 1,
   "file": "fixtures/missing_event_id.json",
   "passed": false,
   "batch_issues": [],
@@ -14,13 +15,17 @@ $ capilinter inspect fixtures/missing_event_id.json --json
           "severity": "WARNING",
           "code": "EVENT_TIME_STALE",
           "message": "'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.",
-          "field": "event_time"
+          "field": "event_time",
+          "fix": "Send events as close to real time as possible, and drop or split out events older than 7 days.",
+          "source": "https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/server-event"
         },
         {
           "severity": "ERROR",
           "code": "MISSING_EVENT_ID",
           "message": "Missing 'event_id'. Browser-to-server deduplication needs the same event_id + event_name on pixel and server events.",
-          "field": "event_id"
+          "field": "event_id",
+          "fix": "Generate one event_id per action and send the same value from the pixel (eventID) and the server (event_id).",
+          "source": "https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events"
         }
       ],
       "emq_estimate": {

@@ -1,0 +1,40 @@
+server: capilinter 0.4.0
+tools/list:
+  audit_payload  read_only=True
+  hash_value  read_only=True
+  list_checks  read_only=True
+  explain_check  read_only=True
+  read_dataset_quality  read_only=True
+
+tools/call audit_payload {"payload_json": "<fixtures/unhashed_pii.json>"}
+(trimmed to schema_version, passed, issue codes and estimate)
+is_error=False
+{
+  "schema_version": 1,
+  "passed": false,
+  "codes": [
+    "EVENT_TIME_STALE",
+    "RAW_PII_UNHASHED_EMAIL"
+  ],
+  "emq_estimate": 1.0
+}
+
+tools/call hash_value {"field": "em", "value": "Jane.Doe@Example.com"}
+is_error=False
+{
+  "field": "em",
+  "normalized": "jane.doe@example.com",
+  "sha256": "86e0b9e56c17cc4d12387e1949b85053fbe73bc3ce5a1188713a9d300cc6133d"
+}
+
+tools/call explain_check {"code": "RAW_PII_UNHASHED_EMAIL"}
+is_error=False
+{
+  "code": "RAW_PII_UNHASHED_EMAIL",
+  "severity": "ERROR",
+  "area": "hashing",
+  "title": "Raw email in user_data",
+  "why": "Meta requires em to be normalized and SHA-256 hashed; sending it raw exposes PII and hurts matching.",
+  "fix": "Trim and lowercase the email, hash it with SHA-256 (capilinter hash), and send the lowercase hex digest.",
+  "source": "https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters"
+}

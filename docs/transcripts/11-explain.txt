@@ -1,0 +1,8 @@
+$ capilinter explain MISSING_EVENT_ID
+MISSING_EVENT_ID  (ERROR, dedup)
+Missing event_id
+
+Why it matters: Without event_id, Meta cannot deduplicate the server event against the browser pixel event, so conversions double count.
+How to fix it:  Generate one event_id per action and send the same value from the pixel (eventID) and the server (event_id).
+Source:         https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events ↗
+[exit 0]
