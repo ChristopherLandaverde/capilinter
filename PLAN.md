@@ -15,5 +15,5 @@ Each task names its files and the check that proves it landed. `[x]` = verified.
 | 7 [x] | Recorded flows against installed wheel | `docs/transcripts/*.txt`, `scripts/record_transcripts.sh` | script reproduces committed files byte-for-byte |
 | 8 [x] | README on FOCO skeleton + Mermaid diagram + rules table link | `README.md` | renders on github.com; brand gate 6/6 |
 | 9 [x] | Version 0.2.0 + CHANGELOG | `pyproject.toml`, `__init__.py`, `CHANGELOG.md` | `capi-validator --version` → 0.2.0 |
-| 10 | Security scan + review by a different model; fix confirmed findings | — | findings resolved or logged |
-| 11 | Open draft PR with evidence | — | PR URL; CI green |
+| 10 [x] | Security scan + review by a different model; fix confirmed findings | — | findings resolved or logged |
+| 11 [x] | Open draft PR with evidence | — | PR URL; CI green |

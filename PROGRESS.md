@@ -12,3 +12,5 @@
 | 02:26–02:32 | 5 CLI glyph | done | test written first; failed, then passed |
 | 02:26–02:32 | 6–7 CI package job, transcripts | done locally | wheel installed in clean venv: acceptance 7/7 run, 4 AC8 skipped by design; transcripts reproducible |
 | 02:26–02:32 | 8–9 README, CHANGELOG, v0.2.0 | done | 48 tests |
+| 02:33–02:39 | 10 Independent review (different model) + fixes | done | 0 high, 4 medium, 6 low; 8 fixed with tests first, 2 declined (DECISIONS.md) |
+| 02:39 | 11 Draft PR #2, CI | done | run 44004220431: 7/7 jobs green; 56 tests on 3.10–3.14, none skipped; wheel artifact uploaded; Mermaid renders on github.com |
