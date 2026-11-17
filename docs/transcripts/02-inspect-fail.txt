@@ -1,4 +1,4 @@
-$ capi-validator inspect fixtures/unhashed_pii.json
+$ capilinter inspect fixtures/unhashed_pii.json
 ============================================================
 CAPI PAYLOAD RECORD: unhashed_pii.json  (1 event(s))
 ============================================================

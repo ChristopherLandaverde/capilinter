@@ -6,10 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from server_side_capi_validator.cli import inspect_payload, main
-from server_side_capi_validator.core import find_duplicate_event_ids, is_sha256, validate_capi_payload
-from server_side_capi_validator.emq import calculate_emq_score
-from server_side_capi_validator.hashing import (
+from capilinter.cli import inspect_payload, main
+from capilinter.core import find_duplicate_event_ids, is_sha256, validate_capi_payload
+from capilinter.emq import calculate_emq_score
+from capilinter.hashing import (
     normalize_and_hash_email,
     normalize_and_hash_field,
     normalize_and_hash_phone,

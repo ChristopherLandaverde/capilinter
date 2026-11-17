@@ -1,3 +1,3 @@
-$ capi-validator hash "United States" --field country
+$ capilinter hash "United States" --field country
 [ERROR] country must be a 2-letter ISO 3166-1 alpha-2 code such as 'us', got 'United States'
 [exit 2]

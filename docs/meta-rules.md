@@ -26,7 +26,7 @@ Status: `✓` matches the doc · `+` fixed in v0.2.0 to match the doc · `□` s
 
 Hashed keys must be SHA-256, lowercase hex. A raw value is an ERROR (`RAW_PII_UNHASHED_EMAIL`, `RAW_PII_UNHASHED_PHONE`, `INVALID_SHA256`); uppercase hex is a WARNING (`HASH_NOT_LOWERCASE`).
 
-| Key | Meta rule (paraphrased) | `capi-validator hash` | Doc example → output | Status |
+| Key | Meta rule (paraphrased) | `capilinter hash` | Doc example → output | Status |
 |---|---|---|---|---|
 | `em` | trim, lowercase | same | `John_Smith@gmail.com` → `john_smith@gmail.com` | ✓ |
 | `ph` | remove symbols, letters, leading zeros; include country code | same; also `00`/`(0)` prefixes, extensions, Unicode digits. National numbers get `--country-code` (default `1`, 10-digit only); a national `0…` number under the default is refused rather than guessed | `(650)555-1212` → `16505551212` | + v0.1 turned UK `07911 123456` into a `+1` number. |

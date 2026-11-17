@@ -1,4 +1,4 @@
-"""Command-line interface: `capi-validator inspect` and `capi-validator hash`."""
+"""Command-line interface: `capilinter inspect` and `capilinter hash`."""
 
 import argparse
 import json
@@ -123,7 +123,7 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="capi-validator", description="Offline Meta CAPI payload validator.")
+    parser = argparse.ArgumentParser(prog="capilinter", description="CAPILinter: offline Meta CAPI payload linter.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 

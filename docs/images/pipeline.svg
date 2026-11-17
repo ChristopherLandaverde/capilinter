@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="380" viewBox="0 0 880 380" role="img" aria-labelledby="t d">
+  <title id="t">Where CAPILinter sits in a server-side tracking pipeline</title>
+  <desc id="d">The browser pixel sends an event with an event_id to Meta. Your server or sGTM container builds the Conversions API payload for the same event. CAPILinter reads that payload offline and checks 21 rules traced to Meta's docs. Exit 0: send it to the Meta Conversions API, where Meta deduplicates it against the pixel event by event_name and event_id. Exit 1: a fix list with the issue code, the field and the repair. CAPILinter never sends events.</desc>
+  <style>
+    .sans { font-family: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .mono { font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .ink { fill: #1C1917; }
+    .muted { fill: #57534E; }
+    .accent { fill: #1E3A8A; }
+    .eyebrow { font-size: 12px; letter-spacing: 0.08em; }
+    .title { font-size: 20px; font-weight: 600; }
+    .label { font-size: 11px; letter-spacing: 0.08em; }
+    .name { font-size: 16px; font-weight: 600; }
+    .code { font-size: 12px; }
+    .note { font-size: 11px; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#57534E"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1E3A8A"/>
+    </marker>
+  </defs>
+
+  <!-- paper tile: solid, so it reads on GitHub light and dark -->
+  <rect x="0.5" y="0.5" width="879" height="379" rx="12" fill="#FAFAF7" stroke="#E7E5E0"/>
+  <text x="32" y="44" class="mono eyebrow muted">CAPILINTER / WHERE IT SITS</text>
+  <text x="32" y="74" class="sans title ink">Check the server event before Meta sees it.</text>
+
+  <!-- browser pixel -->
+  <rect x="32.5" y="104.5" width="196" height="64" rx="6" fill="#FFFFFF" stroke="#E7E5E0"/>
+  <text x="48" y="126" class="mono label muted">BROWSER</text>
+  <text x="48" y="150" class="sans name ink">Pixel event</text>
+  <text x="214" y="150" text-anchor="end" class="mono code muted">event_id</text>
+
+  <!-- server -->
+  <rect x="32.5" y="204.5" width="170" height="64" rx="6" fill="#FFFFFF" stroke="#E7E5E0"/>
+  <text x="48" y="226" class="mono label muted">SERVER</text>
+  <text x="48" y="250" class="sans name ink">sGTM or code</text>
+
+  <!-- payload -->
+  <rect x="240.5" y="204.5" width="150" height="64" rx="6" fill="#FFFFFF" stroke="#E7E5E0"/>
+  <text x="256" y="226" class="mono label muted">PAYLOAD</text>
+  <text x="256" y="250" class="sans name ink">CAPI JSON</text>
+  <line x1="203" y1="236" x2="238" y2="236" stroke="#57534E" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- capilinter -->
+  <rect x="428.5" y="188.5" width="190" height="96" rx="6" fill="#F5F4EE" stroke="#E7E5E0"/>
+  <rect x="428" y="188" width="6" height="97" rx="3" fill="#1E3A8A"/>
+  <text x="450" y="212" class="mono label muted">OFFLINE CHECK</text>
+  <text x="450" y="238" class="sans name ink">CAPILinter</text>
+  <text x="450" y="260" class="mono code accent">21 rules · Meta docs</text>
+  <text x="450" y="276" class="mono code muted">never sends events</text>
+  <line x1="391" y1="236" x2="426" y2="236" stroke="#57534E" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- meta -->
+  <rect x="677.5" y="104.5" width="170" height="64" rx="6" fill="#FFFFFF" stroke="#E7E5E0"/>
+  <text x="693" y="126" class="mono label muted">META</text>
+  <text x="693" y="150" class="sans name ink">Conversions API</text>
+
+  <!-- fix list -->
+  <rect x="677.5" y="252.5" width="170" height="80" rx="6" fill="#FFFFFF" stroke="#B91C1C"/>
+  <text x="693" y="274" class="mono label" fill="#B91C1C">EXIT 1</text>
+  <text x="693" y="298" class="sans name ink">Fix list</text>
+  <text x="693" y="318" class="mono code muted">code · field · fix</text>
+
+  <!-- exit 0 to meta -->
+  <path d="M619 214 L762 214 L762 172" fill="none" stroke="#1E3A8A" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+  <rect x="652" y="204" width="48" height="20" rx="4" fill="#1E3A8A"/>
+  <text x="676" y="218" text-anchor="middle" class="mono note" fill="#FFFFFF">exit 0</text>
+
+  <!-- exit 1 to fix list -->
+  <path d="M619 262 L648 262 L648 284 L674 284" fill="none" stroke="#B91C1C" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- dedup: pixel to meta -->
+  <line x1="229" y1="136" x2="674" y2="136" stroke="#57534E" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+  <rect x="342" y="124" width="216" height="24" rx="4" fill="#FAFAF7"/>
+  <text x="450" y="140" text-anchor="middle" class="mono note muted">dedup on event_name + event_id</text>
+
+  <text x="32" y="360" class="mono note muted">Run it in CI on fixtures, on sGTM request logs, or on a webhook body before you send it.</text>
+</svg>

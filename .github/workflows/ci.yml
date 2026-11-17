@@ -27,7 +27,7 @@ jobs:
       - name: mypy --strict
         run: mypy
       - name: bandit
-        run: bandit -q -r server_side_capi_validator -c pyproject.toml
+        run: bandit -q -r capilinter -c pyproject.toml
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
@@ -81,7 +81,7 @@ jobs:
       - name: CLI flows against the installed wheel
         run: |
           cd "$RUNNER_TEMP"
-          CLI=/tmp/clean/bin/capi-validator
+          CLI=/tmp/clean/bin/capilinter
           FIX="$GITHUB_WORKSPACE/fixtures"
           $CLI --version
           $CLI inspect "$FIX/valid_payload.json"
@@ -91,12 +91,13 @@ jobs:
               exit 1
             fi
           done
-      - name: Transcripts match the committed record
+      - name: Transcripts and README demo image match the committed record
         run: |
           PATH="/tmp/clean/bin:$PATH" bash scripts/record_transcripts.sh
-          git diff --exit-code docs/transcripts
+          python scripts/render_readme_images.py
+          git diff --exit-code docs/transcripts docs/images
       - uses: actions/upload-artifact@v4
         with:
-          name: server-side-capi-validator-dist
+          name: capilinter-dist
           path: dist/
           if-no-files-found: error

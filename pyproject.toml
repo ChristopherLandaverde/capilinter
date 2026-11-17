@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "server-side-capi-validator"
-version = "0.2.0"
+name = "capilinter"
+version = "0.3.0"
 description = "Offline validator for Meta Conversions API (CAPI) payloads: schema, PII hashing, deduplication keys, and an estimated match-quality score."
 readme = "README.md"
 authors = [{ name = "Christopher Landaverde", email = "christopher@focosys.io" }]
@@ -21,10 +21,10 @@ classifiers = [
 Homepage = "https://focosys.io"
 
 [project.scripts]
-capi-validator = "server_side_capi_validator.cli:main"
+capilinter = "capilinter.cli:main"
 
 [tool.setuptools]
-packages = ["server_side_capi_validator"]
+packages = ["capilinter"]
 
 [project.optional-dependencies]
 dev = ["ruff>=0.6", "mypy>=1.10", "bandit[toml]>=1.7", "build>=1.2"]
@@ -41,7 +41,7 @@ ignore = [
 ]
 
 [tool.mypy]
-files = ["server_side_capi_validator"]
+files = ["capilinter"]
 strict = true
 python_version = "3.10"
 

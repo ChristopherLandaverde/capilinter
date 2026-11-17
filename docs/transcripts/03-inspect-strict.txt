@@ -1,4 +1,4 @@
-$ capi-validator inspect fixtures/valid_payload.json --strict
+$ capilinter inspect fixtures/valid_payload.json --strict
 ============================================================
 CAPI PAYLOAD RECORD: valid_payload.json  (1 event(s))
 ============================================================

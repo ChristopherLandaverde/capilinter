@@ -41,3 +41,14 @@ A different model reviewed `build/standard`; no high-severity findings. Each fin
 - **Fixed:** national `0…` phone numbers no longer get a US `1` (refused under the default code, prepended with `--country-code` otherwise); combining marks kept in names and cities; impossible dates refused; `ge` limited to `f m female male`; `fbc`/`fbp` require a 13-digit ms timestamp (fixture updated); `✓ VERIFIED` no longer printed beside warnings; `--strict` pass on a fresh valid event now tested; `--json` reports empty payloads as JSON; the CI test matrix installs dev tools so AC8 runs there instead of skipping; doc counts corrected.
 - **Declined:** requiring identifiers beyond Meta's literal "at least one user_data parameter". The tool follows the doc; the match-quality score shows the weakness.
 - **Declined:** mapping US state names to codes. A lookup table for one field is not worth it; documented as a known limit.
+
+## v0.3.0 rename (branch `build/rename-capilinter`)
+
+- **Name: CAPILinter.** Christopher picked it on Nov 16, 2026 from three options (CAPILinter, CAPI Trace, Signal Verifier).
+- **No `capi-validator` alias.** The old command was public for one day and was never on PyPI. One name is less to explain than a deprecated alias.
+- **SPEC.md and PLAN.md keep the old name.** They record the v0.2.0 build as it happened.
+- **Repository rename needs Christopher.** The GitHub proxy here refuses repository-settings writes. GitHub redirects the old URL after a rename.
+- **README in AdLinter's format.** Christopher asked for it to look like AdLinter's README. Same structure (centered logo, tagline, stats line, badges, nav, intro, captioned demo image, Who it's for, What you get, Known limits, Privacy), same palette and type from AdLinter's DESIGN.md (paper `#FAFAF7`, navy `#1E3A8A`, severity colors only for findings).
+- **Demo image generated, not captured.** A screenshot drifts from the code. The SVG is drawn from recorded CLI output and CI fails if it changes, so the picture is evidence.
+- **Logo:** two signal lines, browser and server, merging into one event: deduplication, the tool's main job. Navy tile like AdLinter's, so the two read as one family.
+- **Static badges** for version, Python and dependencies. They need no network service; the CI badge is live.

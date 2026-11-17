@@ -1,10 +1,10 @@
-"""Server-Side CAPI Validator.
+"""CAPILinter.
 
 Offline checks for Meta Conversions API event payloads.
 Author: Christopher Landaverde (FOCO Systems)
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .core import (
     ValidationIssue,
