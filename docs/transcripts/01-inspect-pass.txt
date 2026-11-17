@@ -1,0 +1,13 @@
+$ capi-validator inspect fixtures/valid_payload.json
+============================================================
+CAPI PAYLOAD RECORD: valid_payload.json  (1 event(s))
+============================================================
+
+[1/1] Lead  event_id=demo_lead_12345
+  ✓ VERIFIED  schema, hashing, and dedup-key checks passed
+  □ WARNING   EVENT_TIME_STALE: 'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.
+  Estimated match quality: 10.0/10.0 (EXCELLENT)
+  Matched: Hashed email (em), Hashed phone (ph), Click ID (fbc), Browser ID (fbp), External ID, Client IP address, Client user agent
+
+Result: PASS
+[exit 0]

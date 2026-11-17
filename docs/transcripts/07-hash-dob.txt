@@ -1,0 +1,3 @@
+$ capi-validator hash 2/16/1997 --field db
+01acdbf6ec7b4f478a225f1a246e5d6767eeab1a7ffa17f025265b5b94f40f0c
+[exit 0]

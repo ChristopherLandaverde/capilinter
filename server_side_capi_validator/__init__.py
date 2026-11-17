@@ -4,7 +4,7 @@ Offline checks for Meta Conversions API event payloads.
 Author: Christopher Landaverde (FOCO Systems)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .core import (
     ValidationIssue,

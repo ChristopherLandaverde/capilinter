@@ -6,29 +6,95 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
+  quality:
+    name: Quality gates (lint, format, types, security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dev tools
+        run: python -m pip install ".[dev]"
+      - name: ruff check
+        run: ruff check .
+      - name: ruff format --check
+        run: ruff format --check .
+      - name: mypy --strict
+        run: mypy
+      - name: bandit
+        run: bandit -q -r server_side_capi_validator -c pyproject.toml
+
   test:
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package
-        run: python -m pip install .
-      - name: Run tests
+      - name: Unit and acceptance tests (source tree)
         run: python -m unittest discover -s tests -p "test_*.py" -v
-      - name: CLI smoke test
+
+  package:
+    name: Build and test the wheel
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and sdist
         run: |
-          capi-validator --version
-          capi-validator inspect fixtures/valid_payload.json
-          if capi-validator inspect fixtures/unhashed_pii.json; then
-            echo "unhashed_pii.json should have failed validation" >&2
-            exit 1
-          fi
+          python -m pip install build
+          python -m build
+      - name: Check wheel has no runtime dependencies
+        run: |
+          python - <<'EOF'
+          import glob, zipfile
+          whl = glob.glob("dist/*.whl")[0]
+          with zipfile.ZipFile(whl) as z:
+              meta = z.read(next(n for n in z.namelist() if n.endswith("METADATA"))).decode()
+          deps = [l for l in meta.splitlines() if l.startswith("Requires-Dist:") and "extra ==" not in l]
+          assert not deps, deps
+          print("runtime dependencies: none")
+          EOF
+      - name: Install the built wheel in a clean venv
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+      - name: Acceptance tests against the installed wheel (AC7)
+        run: |
+          cd "$RUNNER_TEMP"
+          CAPI_TEST_INSTALLED=1 /tmp/clean/bin/python "$GITHUB_WORKSPACE/tests/test_acceptance.py" -v
+      - name: CLI flows against the installed wheel
+        run: |
+          cd "$RUNNER_TEMP"
+          CLI=/tmp/clean/bin/capi-validator
+          FIX="$GITHUB_WORKSPACE/fixtures"
+          $CLI --version
+          $CLI inspect "$FIX/valid_payload.json"
+          for f in unhashed_pii unhashed_phone missing_event_id; do
+            if $CLI inspect "$FIX/$f.json"; then
+              echo "$f.json should have failed validation" >&2
+              exit 1
+            fi
+          done
+      - name: Transcripts match the committed record
+        run: |
+          PATH="/tmp/clean/bin:$PATH" bash scripts/record_transcripts.sh
+          git diff --exit-code docs/transcripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-side-capi-validator-dist
+          path: dist/
+          if-no-files-found: error

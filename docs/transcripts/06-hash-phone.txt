@@ -1,0 +1,3 @@
+$ capi-validator hash (650)555-1212 --phone
+e323ec626319ca94ee8bff2e4c87cf613be6ea19919ed1364124e16807ab3176
+[exit 0]
