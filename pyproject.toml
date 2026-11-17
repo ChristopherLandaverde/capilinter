@@ -9,7 +9,7 @@ description = "Offline validator for Meta Conversions API (CAPI) payloads: schem
 readme = "README.md"
 authors = [{ name = "Christopher Landaverde", email = "christopher@focosys.io" }]
 license = { text = "MIT" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 classifiers = [
     "Programming Language :: Python :: 3",

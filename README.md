@@ -2,7 +2,7 @@
 
 Checks Meta Conversions API payloads for the handoff errors that break matching and deduplication, before they reach Events Manager.
 
-`Tool / v0.1.0` · Python 3.9+ · zero dependencies · runs offline
+`Tool / v0.1.0` · Python 3.10+ · zero dependencies · runs offline
 
 ## Scope
 
@@ -84,7 +84,7 @@ Hashed fields earn credit only when the value is a valid lowercase SHA-256. Grad
 python -m unittest discover -s tests -v
 ```
 
-CI runs the suite and a CLI smoke test on Python 3.9–3.13.
+CI runs the suite and a CLI smoke test on Python 3.10–3.14.
 
 ---
 
