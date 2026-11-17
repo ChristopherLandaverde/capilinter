@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "server-side-capi-validator"
+version = "0.1.0"
+description = "Offline validator for Meta Conversions API (CAPI) payloads: schema, PII hashing, deduplication keys, and an estimated match-quality score."
+readme = "README.md"
+authors = [{ name = "Christopher Landaverde", email = "christopher@focosys.io" }]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://focosys.io"
+
+[project.scripts]
+capi-validator = "server_side_capi_validator.cli:main"
+
+[tool.setuptools]
+packages = ["server_side_capi_validator"]

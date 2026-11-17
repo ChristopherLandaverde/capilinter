@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "event_name": "Purchase",
+      "event_time": 1731600000,
+      "action_source": "website",
+      "event_source_url": "https://example.com/checkout",
+      "user_data": {
+        "em": [
+          "86e0b9e56c17cc4d12387e1949b85053fbe73bc3ce5a1188713a9d300cc6133d"
+        ],
+        "client_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "client_ip_address": "203.0.113.10"
+      },
+      "custom_data": {
+        "currency": "USD",
+        "value": 49.0
+      }
+    }
+  ]
+}

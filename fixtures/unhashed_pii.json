@@ -1,0 +1,18 @@
+{
+  "data": [
+    {
+      "event_name": "Lead",
+      "event_time": 1731600000,
+      "event_id": "demo_lead_2",
+      "action_source": "website",
+      "event_source_url": "https://example.com/demo",
+      "user_data": {
+        "em": [
+          "Jane.Doe@Example.com"
+        ],
+        "client_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "client_ip_address": "203.0.113.10"
+      }
+    }
+  ]
+}
