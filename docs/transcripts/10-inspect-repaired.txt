@@ -1,0 +1,15 @@
+$ capilinter inspect fixtures/unhashed_pii_repaired.json
+============================================================
+CAPI PAYLOAD RECORD: unhashed_pii_repaired.json  (1 event(s))
+============================================================
+
+[1/1] Lead  event_id=demo_lead_2
+  □ OBSERVED  no errors, 1 warning
+  □ WARNING   EVENT_TIME_STALE: 'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.
+  Estimated match quality: 4.0/10.0 (POOR)
+  Matched: Hashed email (em), Client IP address, Client user agent
+  + Add a SHA-256 hashed phone, digits with country code (+2.5).
+  + Pass the _fbc cookie, or build it from fbclid on the landing URL (+1.5).
+
+Result: PASS
+[exit 0]

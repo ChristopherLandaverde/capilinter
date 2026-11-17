@@ -28,3 +28,5 @@ record 05-hash-email     hash "  John_Smith@gmail.com "
 record 06-hash-phone     hash "(650)555-1212" --phone
 record 07-hash-dob       hash "2/16/1997" --field db
 record 08-hash-refused   hash "United States" --field country
+record 09-hash-repair     hash "Jane.Doe@Example.com"
+record 10-inspect-repaired inspect fixtures/unhashed_pii_repaired.json

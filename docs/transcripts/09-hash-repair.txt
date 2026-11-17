@@ -1,0 +1,3 @@
+$ capilinter hash Jane.Doe@Example.com
+86e0b9e56c17cc4d12387e1949b85053fbe73bc3ce5a1188713a9d300cc6133d
+[exit 0]

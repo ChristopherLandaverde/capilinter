@@ -91,10 +91,11 @@ jobs:
               exit 1
             fi
           done
-      - name: Transcripts match the committed record
+      - name: Transcripts and README demo image match the committed record
         run: |
           PATH="/tmp/clean/bin:$PATH" bash scripts/record_transcripts.sh
-          git diff --exit-code docs/transcripts
+          python scripts/render_readme_images.py
+          git diff --exit-code docs/transcripts docs/images
       - uses: actions/upload-artifact@v4
         with:
           name: capilinter-dist

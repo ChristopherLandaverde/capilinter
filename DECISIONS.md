@@ -48,3 +48,7 @@ A different model reviewed `build/standard`; no high-severity findings. Each fin
 - **No `capi-validator` alias.** The old command was public for one day and was never on PyPI. One name is less to explain than a deprecated alias.
 - **SPEC.md and PLAN.md keep the old name.** They record the v0.2.0 build as it happened.
 - **Repository rename needs Christopher.** The GitHub proxy here refuses repository-settings writes. GitHub redirects the old URL after a rename.
+- **README in AdLinter's format.** Christopher asked for it to look like AdLinter's README. Same structure (centered logo, tagline, stats line, badges, nav, intro, captioned demo image, Who it's for, What you get, Known limits, Privacy), same palette and type from AdLinter's DESIGN.md (paper `#FAFAF7`, navy `#1E3A8A`, severity colors only for findings).
+- **Demo image generated, not captured.** A screenshot drifts from the code. The SVG is drawn from recorded CLI output and CI fails if it changes, so the picture is evidence.
+- **Logo:** two signal lines, browser and server, merging into one event: deduplication, the tool's main job. Navy tile like AdLinter's, so the two read as one family.
+- **Static badges** for version, Python and dependencies. They need no network service; the CI badge is live.
