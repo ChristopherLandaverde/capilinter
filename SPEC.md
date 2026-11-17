@@ -1,65 +1,81 @@
-# SPEC — bring server-side-capi-validator to the foco-build standard
+# SPEC — CAPILinter v0.4.0, agentic
 
-`Build spec / v0.2.0` · Nov 2026 · Branch `build/standard` · Status: approved Nov 16, 2026
+`Build spec / v0.4.0` · Nov 2026 · Branch `build/agentic` · Status: awaiting approval · Earlier builds: [docs/build/](docs/build/)
 
-Scope gate: this is a new public tool beside the current loop (AdLinter → focosys.io). Christopher asked to proceed on Nov 16, 2026; treated as an override.
+Scope gate: this adds to CAPILinter while AdLinter → focosys.io is still the current loop. Christopher asked for it on Nov 16, 2026; treated as an override.
 
 ## Problem
 
-v0.1.0 worked (32 tests at spec time, CI green on Python 3.10–3.14), but it was built before the build process. Nothing ties its rules to Meta's published requirements, CI runs no lint, typecheck or security scan, no built artifact is installed and exercised, and the README and CLI fail parts of the brand ship gate (the `!` glyph, no number as evidence, no slash label or diagram). Someone who finds the repo has no evidence they can check for why they should trust its verdicts.
+CAPILinter is a good tool for a person at a terminal. An agent (Claude Code, Claude Desktop, Cursor) can shell out to it, but it has to guess the flags, parse text, and re-explain findings from memory. There is no way for the agent to ask "what does `MISSING_EVENT_ID` mean, and where does Meta say so?" AdLinter already solved this with three levels. CAPILinter should match them, so the two tools work the same way for an agent.
 
 ## Who uses it, and what they decide
 
-- **RevOps / analytics engineers** running sGTM or webhook CAPI pipelines decide: *is this payload safe to send, and if not, what do I fix first?*
-- **Prospective clients reading the repo** decide: *does this person know CAPI well enough to own my pipeline?* The repo is evidence for focosys.io.
+- **An engineer's agent** working in an sGTM or server repo. It decides: *is this payload safe to ship, and what exact change fixes it?* It must quote CAPILinter's verdicts, not invent its own.
+- **A consultant's agent** auditing a client's CAPI setup. It decides: *what goes in the findings list, and what does each cite?*
+- **Christopher, as a seller.** The README shows "agentic L1 · L2" next to AdLinter's badge, as evidence for focosys.io.
 
 ## In scope
 
-1. **Rules traced to Meta's docs.** Each validation rule and normalization rule cites the Meta doc section it implements, in a rules table in the README and in code comments. Any rule that disagrees with the docs gets fixed.
-2. **CI quality gates.** ruff (lint + format check) and mypy (strict on the package), configured in `pyproject.toml`, plus bandit, all in CI. Fix the current 32 ruff findings.
-3. **Acceptance tests.** `tests/test_acceptance.py`, one test per criterion below, named `test_ac<N>_...`.
-4. **Built-artifact check.** CI builds wheel and sdist, installs the *built wheel* in a clean venv, runs the CLI flows against it, and uploads the wheel as a run artifact. That run plays the role of a preview deploy.
-5. **Recorded flows.** Transcripts of the primary flows run against the installed wheel are committed to `docs/transcripts/`: inspect pass, inspect fail, `--strict`, `--json`, `hash`. They stand in for screenshots.
-6. **Brand ship gate.** README rebuilt on the FOCO skeleton (slash label, metadata line, trace block, scope, evidence numbers, CTA to christopher@focosys.io), plus a Mermaid diagram of where the tool sits in the pipeline. CLI output uses only the glyph set.
-7. **Process record.** `SPEC.md`, `PLAN.md`, `PROGRESS.md`, `DECISIONS.md` in the repo.
-8. **Version 0.2.0.** Version bumped to 0.2.0 with a `CHANGELOG.md`.
+1. **One check registry.** A single source of truth in `capilinter/checks.py` holds every issue code: severity, title, why it matters, how to fix it, and the Meta source URL. Today the codes live inline in `core.py`. `core.py` will emit only registered codes, and a test proves the registry, the code and `docs/meta-rules.md` agree.
+2. **L1, machine-readable.**
+   - The JSON report gets `"schema_version": 1`, and each issue carries `fix` and `source`.
+   - A JSON Schema file documents the report, and a test validates real output against it.
+   - New `capilinter checks [--json]` and `capilinter explain <CODE> [--json]` commands.
+3. **L2, agent-callable.** A `capilinter-mcp` MCP server over stdio with four read-only tools that call the library and compute nothing themselves:
+   - `audit_payload`: an absolute path *or* JSON text in, the L1 report out.
+   - `hash_value`: field, value and country code in, the normalized value and its SHA-256 out, or a refusal with the reason.
+   - `list_checks`: the registry, filterable by severity and area.
+   - `explain_check`: one code, with why, fix and source.
+
+   Bad input comes back as `{"error": {"kind": "usage" | "refused" | "internal", "message": ...}}`, matching AdLinter, never as a crash. Relative paths are refused.
+4. **Agent docs.**
+   - A README "Agentic" section in AdLinter's format: a layer diagram, an "Ask your agent…" table, and setup lines for Claude Code, Claude Desktop and Cursor.
+   - A real recorded MCP call, run in CI.
+   - `AGENTS.md`, telling any agent how to use the tool and not to recompute verdicts.
+5. **Privacy statement for MCP.** The server makes no network calls, and a test enforces that. Tool results go to the model behind the agent, and the README says so plainly, as AdLinter's does.
+6. **Version 0.4.0.** CHANGELOG, DECISIONS and PROGRESS updated.
 
 ## Out of scope
 
-LinkedIn or other CAPIs; calling the Graph API or sending events; publishing to PyPI; a reusable GitHub Action; packaging a release tag; ConsentFlow; AdLinter integration; any real client data (fixtures stay synthetic and labeled).
+- L3 live read (Meta's APIs, Events Manager, dataset quality). It needs Meta access tokens; see question 2.
+- Sending events, or any write to Meta.
+- Publishing to PyPI or an MCP registry.
+- LinkedIn or other conversion APIs.
+- Real client data.
 
 ## Acceptance criteria (runnable)
 
 | # | Criterion | Check |
 |---|---|---|
-| AC1 | Clean payload passes | `capi-validator inspect fixtures/valid_payload.json` → exit 0 |
-| AC2 | Each broken fixture fails with its named code | `inspect fixtures/{unhashed_pii,unhashed_phone,missing_event_id}.json` → exit 1, output contains `RAW_PII_UNHASHED_EMAIL` / `RAW_PII_UNHASHED_PHONE` / `MISSING_EVENT_ID` |
-| AC3 | Unreadable or non-CAPI input never crashes | directory, binary file, scalar JSON → exit 2, no traceback on stderr |
-| AC4 | Hashes match Meta's documented normalization | `hash` output for each documented example input equals `sha256` of the documented normalized form |
-| AC5 | `--strict` escalates warnings | a payload with only warnings → exit 0 default, exit 1 with `--strict` |
-| AC6 | `--json` is machine-readable | output parses as JSON with `passed`, `events[].issues[].code` |
-| AC7 | Built wheel works outside the repo | in a clean venv, `pip install dist/*.whl` then AC1–AC2 from a temp dir → same results |
-| AC8 | Quality gates clean | `ruff check .`, `ruff format --check .`, `mypy`, `bandit -r server_side_capi_validator` → all exit 0 |
-| AC9 | CI enforces AC1–AC8 | GitHub Actions on the PR green on Python 3.10–3.14 |
-| AC10 | Brand ship gate | the 6 foco-brand checks pass, written up point by point in the PR |
+| AC1 | Registry is the single source | test: every code `core.py` can emit is in the registry; every registry code has a test that triggers it; every code appears in `docs/meta-rules.md` |
+| AC2 | JSON report is versioned and valid | `capilinter inspect <fixture> --json` validates against `docs/schema/report-v1.json` for every fixture; `schema_version == 1` |
+| AC3 | `checks` and `explain` work | `capilinter checks --json` lists every registry code; `capilinter explain MISSING_EVENT_ID --json` returns why, fix and a `developers.facebook.com` source; unknown code → exit 2 |
+| AC4 | MCP server lists exactly 4 read-only tools | stdio client: `tools/list` returns `audit_payload`, `hash_value`, `list_checks`, `explain_check` |
+| AC5 | MCP results equal CLI results | `audit_payload` on each fixture returns JSON identical to `capilinter inspect --json`; `hash_value` equals `capilinter hash` |
+| AC6 | MCP bad input is a tool error, not a crash | relative path, missing file, both path and text, unknown field → `error.kind` is `usage` or `refused`; the server stays up for the next call |
+| AC7 | No network | test: importing and running the package with sockets disabled passes every MCP and CLI flow |
+| AC8 | Core stays dependency-free | built wheel: no runtime `Requires-Dist`; the MCP SDK only under the `mcp` extra; `capilinter` CLI works without it |
+| AC9 | Installed-wheel run | AC2–AC6 pass against `pip install dist/*.whl[mcp]` in a clean venv, from outside the repo |
+| AC10 | Gates and CI | ruff, ruff format, mypy --strict, bandit clean; CI green on Python 3.10–3.14 |
+| AC11 | Brand gate and review | foco-brand checks pass point by point; review by a different model, findings fixed or logged |
 
 ## Assumptions, and how each is checked
 
-- **The rules match Meta's current docs.** Checked by fetching Meta's *Customer Information Parameters* and *Server Event Parameters* pages during the build and comparing them rule by rule. Any mismatch is fixed or logged.
-- **GitHub renders Mermaid in READMEs.** Checked by viewing the PR's README on github.com.
-- **ruff and mypy are dev-only.** Runtime dependencies stay at zero. Checked by confirming `dependencies = []` in the built wheel's metadata.
+- **The official MCP Python SDK (`mcp`) supports Python 3.10+.** Checked by installing it in CI on 3.10 and 3.14.
+- **`claude mcp add capilinter -- capilinter-mcp` connects in Claude Code.** Checked by running a real stdio client in CI. The `claude mcp add` line itself is marked "not run here" unless I can run it.
+- **Meta's docs are unchanged since Nov 17.** Spot-checked by refetching both pages; any change is logged.
 
 ## Decided by me, logged in DECISIONS.md
 
-- Rule severities where Meta's docs are clear.
-- Glyph for warnings: `□ WARNING`, meaning observed but not broken. The glyph set has no warning mark.
-- ruff rule set and formatting.
-- README structure within the brand skeleton.
+- Tool names and argument shapes, kept parallel to AdLinter's `audit_export` / `list_checks` / `explain_check`.
+- Registry wording for each code's why and fix.
+- JSON Schema draft version.
+- The layer diagram's wording, in AdLinter's palette.
 
 ## Brought back to you
 
-- **Merging `build/standard` into `main`.** Red tier.
-- **Any rule where Meta's docs are ambiguous.** I'll pick a default and flag it.
-- **Repo topics and homepage.** The proxy here blocks repo settings, so you need to run one command (in the message).
+1. **The MCP library.** Recommended: the official `mcp` SDK as an *optional* extra (`pip install "capilinter[mcp]"`). The core stays at zero dependencies and protocol details stay correct as MCP evolves. The alternative is a hand-written stdio JSON-RPC server: zero dependencies everywhere, but more code to keep in step with the protocol.
+2. **L3 live read.** Recommended: not in this build. Reading Meta's dataset quality data needs a Meta access token, which means creating secrets, and it touches live client stacks. Both are red tier. A later build could add it fixture-verified, as AdLinter did.
+3. **Merging into `main`.** Red tier, as before.
 
-Budget: $20, 4h. Review at the end by a different model than the one that writes the code.
+Budget: 4h wall clock, 3 failed attempts per problem. Review at the end by a different model than the one that writes the code.
