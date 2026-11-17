@@ -115,7 +115,7 @@ def _check_hashed_field(key: str, value: Any, issues: list[ValidationIssue]) -> 
             "ERROR",
             "INVALID_SHA256",
             f"'{key}' is not a 64-character lowercase SHA-256 hex string. "
-            f"Normalize it and hash it (capi-validator hash --field {key} VALUE).",
+            f"Normalize it and hash it (capilinter hash --field {key} VALUE).",
             path,
         )
     )

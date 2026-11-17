@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — Nov 2026
+
+**Renamed** to CAPILinter, to sit beside AdLinter under the FOCO naming rule: a public tool is named for what it checks.
+
+- Repository, package and import name: `capilinter` (was `server-side-capi-validator` / `server_side_capi_validator`).
+- Command: `capilinter` (was `capi-validator`). Same subcommands and flags.
+- No rule or behavior changes.
+
 ## 0.2.0 — Nov 2026
 
 Every rule is now traced to Meta's docs ([docs/meta-rules.md](docs/meta-rules.md)). Six normalization rules disagreed with those docs and are fixed.

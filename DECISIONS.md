@@ -41,3 +41,10 @@ A different model reviewed `build/standard`; no high-severity findings. Each fin
 - **Fixed:** national `0…` phone numbers no longer get a US `1` (refused under the default code, prepended with `--country-code` otherwise); combining marks kept in names and cities; impossible dates refused; `ge` limited to `f m female male`; `fbc`/`fbp` require a 13-digit ms timestamp (fixture updated); `✓ VERIFIED` no longer printed beside warnings; `--strict` pass on a fresh valid event now tested; `--json` reports empty payloads as JSON; the CI test matrix installs dev tools so AC8 runs there instead of skipping; doc counts corrected.
 - **Declined:** requiring identifiers beyond Meta's literal "at least one user_data parameter". The tool follows the doc; the match-quality score shows the weakness.
 - **Declined:** mapping US state names to codes. A lookup table for one field is not worth it; documented as a known limit.
+
+## v0.3.0 rename (branch `build/rename-capilinter`)
+
+- **Name: CAPILinter.** Christopher picked it on Nov 16, 2026 from three options (CAPILinter, CAPI Trace, Signal Verifier).
+- **No `capi-validator` alias.** The old command was public for one day and was never on PyPI. One name is less to explain than a deprecated alias.
+- **SPEC.md and PLAN.md keep the old name.** They record the v0.2.0 build as it happened.
+- **Repository rename needs Christopher.** The GitHub proxy here refuses repository-settings writes. GitHub redirects the old URL after a rename.

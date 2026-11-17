@@ -1,4 +1,4 @@
-"""Acceptance tests for server-side-capi-validator, AC1-AC8.
+"""Acceptance tests for capilinter, AC1-AC8.
 
 Written from SPEC.md before the v0.2.0 implementation. AC9 (CI) and AC10
 (brand gate) are not testable here. Set CAPI_TEST_INSTALLED=1 to run the CLI
@@ -27,7 +27,7 @@ def run(args, cwd, **kw):
         env.pop("PYTHONPATH", None)
     else:
         env["PYTHONPATH"] = str(REPO)
-    cmd = [sys.executable, "-m", "server_side_capi_validator.cli", *args]
+    cmd = [sys.executable, "-m", "capilinter.cli", *args]
     return subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, **kw)
 
 
@@ -117,7 +117,7 @@ class AcceptanceTests(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         probe = subprocess.run(
-            [sys.executable, "-c", "import server_side_capi_validator as m; print(m.__file__)"],
+            [sys.executable, "-c", "import capilinter as m; print(m.__file__)"],
             cwd=self.tmp,
             env={k: v for k, v in os.environ.items() if INSTALLED is False or k != "PYTHONPATH"}
             | ({} if INSTALLED else {"PYTHONPATH": str(REPO)}),
@@ -149,7 +149,7 @@ class AcceptanceTests(unittest.TestCase):
         self._gate(["mypy"])
 
     def test_ac8_bandit(self):
-        self._gate(["bandit", "-q", "-r", "server_side_capi_validator", "-c", "pyproject.toml"])
+        self._gate(["bandit", "-q", "-r", "capilinter", "-c", "pyproject.toml"])
 
 
 if __name__ == "__main__":

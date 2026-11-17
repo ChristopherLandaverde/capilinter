@@ -1,10 +1,10 @@
 `Tool / server-side tracking`
 
-# server-side-capi-validator
+# CAPILinter
 
 Checks Meta Conversions API payloads before they leave your server: hashing, deduplication keys, timestamps, and required fields, each rule traced to Meta's docs.
 
-`CLI, v0.2.0 · Nov 2026 · Python 3.10+, zero runtime dependencies, runs offline · Fixtures are synthetic, no client data`
+`CLI, v0.3.0 · Nov 2026 · Formerly server-side-capi-validator · Python 3.10+, zero runtime dependencies, runs offline · Fixtures are synthetic, no client data`
 
 ---
 
@@ -17,7 +17,7 @@ Checks Meta Conversions API payloads before they leave your server: hashing, ded
              (pixel/server dedup fails); repeated event_name/event_id in one batch;
              event_time in ms, in the future, non-numeric or NaN; unknown action_source;
              website events without client_user_agent or event_source_url; malformed fbc/fbp
-+ REPAIRED   capi-validator hash --field <key> prints the normalized SHA-256 value to send
++ REPAIRED   capilinter hash --field <key> prints the normalized SHA-256 value to send
 ✓ VERIFIED   exit 0 only when every event passes; --strict also fails on warnings
 ```
 
@@ -28,7 +28,7 @@ flowchart LR
   A[Browser pixel<br/>event_id] -.dedup.-> M[(Meta)]
   B[Site / webhook] --> S[sGTM or server code]
   S --> P[CAPI payload JSON]
-  P --> V{{capi-validator}}
+  P --> V{{CAPILinter}}
   V -- exit 0 --> M
   V -- exit 1 --> F[Fix list:<br/>code, field, repair]
 ```
@@ -51,23 +51,23 @@ Run it in CI on payload fixtures, on sGTM request logs, or on a webhook body bef
 ## Install
 
 ```bash
-pip install "git+https://github.com/ChristopherLandaverde/server-side-capi-validator.git"
+pip install "git+https://github.com/ChristopherLandaverde/capilinter.git"
 ```
 
 ## Use
 
 ```bash
-capi-validator inspect payload.json            # check a payload
-capi-validator inspect payload.json --strict   # warnings fail the run
-capi-validator inspect payload.json --json     # machine-readable report
-capi-validator hash "  John_Smith@gmail.com "   # sha256 of john_smith@gmail.com
-capi-validator hash "(650)555-1212" --phone     # sha256 of 16505551212
-capi-validator hash "07911 123456" --phone --country-code 44   # sha256 of 447911123456
-capi-validator hash "2/16/1997" --field db      # sha256 of 19970216
+capilinter inspect payload.json            # check a payload
+capilinter inspect payload.json --strict   # warnings fail the run
+capilinter inspect payload.json --json     # machine-readable report
+capilinter hash "  John_Smith@gmail.com "   # sha256 of john_smith@gmail.com
+capilinter hash "(650)555-1212" --phone     # sha256 of 16505551212
+capilinter hash "07911 123456" --phone --country-code 44   # sha256 of 447911123456
+capilinter hash "2/16/1997" --field db      # sha256 of 19970216
 ```
 
 ```
-$ capi-validator inspect fixtures/unhashed_pii.json
+$ capilinter inspect fixtures/unhashed_pii.json
 [1/1] Lead  event_id=demo_lead_2
   × ERROR     RAW_PII_UNHASHED_EMAIL: Found a raw email address. Normalize (trim, lowercase) and SHA-256 hash it.
   □ WARNING   EVENT_TIME_STALE: 'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.
@@ -103,7 +103,7 @@ Grades: EXCELLENT ≥ 8.5 · GOOD ≥ 7.0 · FAIR ≥ 5.0 · POOR below 5.0.
 ```bash
 pip install -e ".[dev]"
 python -m unittest discover -s tests -v
-ruff check . && ruff format --check . && mypy && bandit -q -r server_side_capi_validator -c pyproject.toml
+ruff check . && ruff format --check . && mypy && bandit -q -r capilinter -c pyproject.toml
 bash scripts/record_transcripts.sh   # regenerate docs/transcripts
 ```
 

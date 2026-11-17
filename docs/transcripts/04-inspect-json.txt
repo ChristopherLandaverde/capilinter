@@ -1,4 +1,4 @@
-$ capi-validator inspect fixtures/missing_event_id.json --json
+$ capilinter inspect fixtures/missing_event_id.json --json
 {
   "file": "fixtures/missing_event_id.json",
   "passed": false,
