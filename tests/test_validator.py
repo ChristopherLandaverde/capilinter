@@ -147,12 +147,20 @@ class TestCLI(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertIn("RAW_PII_UNHASHED_EMAIL", {i["code"] for i in report["events"][0]["issues"]})
 
+    def test_output_uses_brand_glyphs_only(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            inspect_payload(FIXTURES / "unhashed_pii.json")
+        out = buf.getvalue()
+        self.assertIn("× ERROR", out)
+        self.assertIn("□ WARNING", out)
+        self.assertNotIn("! WARNING", out)
+
     def test_hash_command(self):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             main(["hash", "  Jane.Doe@Example.com "])
         self.assertEqual(buf.getvalue().strip(), hashlib.sha256(b"jane.doe@example.com").hexdigest())
-
 
 
 def write_tmp(tmp, name, content):
@@ -261,6 +269,52 @@ class TestReviewRegressions(unittest.TestCase):
         with contextlib.redirect_stdout(buf):
             main(["hash", "--field", "ct", "New York"])
         self.assertEqual(buf.getvalue().strip(), hashlib.sha256(b"newyork").hexdigest())
+
+
+class TestMetaDocumentedExamples(unittest.TestCase):
+    """Examples from Meta's Customer Information Parameters page (docs/meta-rules.md)."""
+
+    def test_documented_examples(self):
+        cases = [
+            ("fn", "Valéry", "valéry"),
+            ("ct", "New York", "newyork"),
+            ("ct", "São Paulo", "sãopaulo"),
+            ("st", "AZ", "az"),
+            ("st", "New South Wales", "newsouthwales"),
+            ("zp", "M1 1AE", "m11ae"),
+            ("zp", "94035-1234", "94035"),
+            ("country", " US ", "us"),
+            ("db", "2/16/1997", "19970216"),
+            ("db", "1997-02-16", "19970216"),
+            ("db", "19970216", "19970216"),
+            ("db", "16/02/1997", "19970216"),
+        ]
+        for key, raw, expected in cases:
+            self.assertEqual(normalize_field(key, raw), expected, (key, raw))
+        self.assertEqual(normalize_phone("(650)555-1212"), "16505551212")
+
+    def test_values_that_cannot_be_normalized_raise(self):
+        for key, raw in [
+            ("country", "United States"),
+            ("ge", "x"),
+            ("db", "13/13/1997"),
+            ("db", "1997"),
+            ("db", "1850-01-01"),
+        ]:
+            with self.assertRaises(ValueError, msg=(key, raw)):
+                normalize_field(key, raw)
+
+    def test_hash_cli_reports_bad_value(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as ctx:
+            main(["hash", "--field", "country", "United States"])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("2-letter", err.getvalue())
+
+    def test_any_user_data_parameter_counts(self):
+        event = load_event("valid_payload.json")
+        event["user_data"] = {"client_user_agent": "Mozilla/5.0", "fn": SHA_FOO}
+        self.assertNotIn("NO_CUSTOMER_INFORMATION", codes(validate_capi_payload(event, now=NOW)))
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ Manager.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from .core import is_fb_cookie, is_sha256
 
@@ -19,7 +19,13 @@ WEIGHTS = [
     ("fbp", "Browser ID (fbp)", 1.0, "Forward the _fbp first-party cookie (+1.0).", "fb"),
     ("external_id", "External ID", 1.0, "Pass a stable CRM or user ID as external_id (+1.0).", False),
     ("client_ip_address", "Client IP address", 0.5, "Forward the visitor IP from the server container (+0.5).", False),
-    ("client_user_agent", "Client user agent", 0.5, "Forward the browser user agent from the server container (+0.5).", False),
+    (
+        "client_user_agent",
+        "Client user agent",
+        0.5,
+        "Forward the browser user agent from the server container (+0.5).",
+        False,
+    ),
 ]
 
 EXCELLENT = 8.5
@@ -31,9 +37,9 @@ FAIR = 5.0
 class EMQReport:
     score: float
     grade: str
-    matched_parameters: List[str]
-    missing_parameters: List[str]
-    recommendations: List[str]
+    matched_parameters: list[str]
+    missing_parameters: list[str]
+    recommendations: list[str]
 
 
 def _present(value: Any, check: Any) -> bool:
@@ -47,15 +53,15 @@ def _present(value: Any, check: Any) -> bool:
     return any(is_sha256(v) for v in values)
 
 
-def calculate_emq_score(event: Dict[str, Any]) -> EMQReport:
+def calculate_emq_score(event: dict[str, Any]) -> EMQReport:
     user_data = event.get("user_data", {}) if isinstance(event, dict) else {}
     if not isinstance(user_data, dict):
         user_data = {}
 
     score = 0.0
-    matched: List[str] = []
-    missing: List[str] = []
-    recs: List[str] = []
+    matched: list[str] = []
+    missing: list[str] = []
+    recs: list[str] = []
 
     for key, label, weight, rec, check in WEIGHTS:
         if _present(user_data.get(key), check):
@@ -75,5 +81,6 @@ def calculate_emq_score(event: Dict[str, Any]) -> EMQReport:
     else:
         grade = "POOR"
 
-    return EMQReport(score=score, grade=grade, matched_parameters=matched,
-                     missing_parameters=missing, recommendations=recs)
+    return EMQReport(
+        score=score, grade=grade, matched_parameters=matched, missing_parameters=missing, recommendations=recs
+    )

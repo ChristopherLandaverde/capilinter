@@ -1,5 +1,6 @@
 """Normalization and SHA-256 hashing helpers matching Meta CAPI rules."""
 
+import datetime
 import hashlib
 import re
 import unicodedata
@@ -35,22 +36,52 @@ def normalize_phone(phone: str, default_country_code: str = "1") -> str:
     return digits
 
 
+def _letters_only(text: str) -> str:
+    """Lowercase letters only; keeps UTF-8 letters such as 'é' (Meta: no punctuation, digits or spaces)."""
+    return "".join(ch for ch in text if ch.isalpha())
+
+
+def _normalize_dob(text: str) -> str:
+    """Return YYYYMMDD. Accepts YYYY-MM-DD, M/D/YYYY (US, as in Meta's example), D/M/YYYY when day > 12, or YYYYMMDD."""
+    groups = re.findall(r"\d+", text)
+    if len(groups) == 1 and len(groups[0]) == 8:
+        year, month, day = groups[0][:4], groups[0][4:6], groups[0][6:]
+    elif len(groups) == 3 and len(groups[0]) == 4:
+        year, month, day = groups
+    elif len(groups) == 3 and len(groups[2]) == 4:
+        first, second, year = groups
+        month, day = (second, first) if int(first) > 12 >= int(second) else (first, second)
+    else:
+        raise ValueError(f"db must be a date such as 1997-02-16 or 2/16/1997, got {text!r}")
+    y, m, d = int(year), int(month), int(day)
+    if not (1900 <= y <= datetime.date.today().year and 1 <= m <= 12 and 1 <= d <= 31):
+        raise ValueError(f"db is out of range (year 1900-now, month 01-12, day 01-31): {text!r}")
+    return f"{y:04d}{m:02d}{d:02d}"
+
+
 def normalize_field(key: str, value: str) -> str:
-    """Normalize a non-email, non-phone user_data field before hashing."""
+    """Normalize a non-email, non-phone user_data field before hashing.
+
+    Rules follow Meta's Customer Information Parameters page; see docs/meta-rules.md.
+    Raises ValueError when a value cannot be normalized without guessing.
+    """
     text = unicodedata.normalize("NFKC", value).strip().lower()
-    if key in ("fn", "ln"):
-        return re.sub(r"[^\w]|[\d_]", "", text)
-    if key == "ct":
-        return re.sub(r"[^a-z]", "", text)
-    if key in ("st", "country"):
-        return re.sub(r"[^a-z]", "", text)[:2]
+    if key in ("fn", "ln", "ct", "st"):
+        return _letters_only(text)
+    if key == "country":
+        code = _letters_only(text)
+        if len(code) != 2:
+            raise ValueError(f"country must be a 2-letter ISO 3166-1 alpha-2 code such as 'us', got {value!r}")
+        return code
     if key == "zp":
         compact = re.sub(r"[\s\-]", "", text)
         return compact[:5] if compact[:5].isdigit() else compact
     if key == "ge":
-        return text[:1] if text[:1] in ("f", "m") else text
+        if text[:1] not in ("f", "m"):
+            raise ValueError(f"ge must start with 'f' or 'm', got {value!r}")
+        return text[:1]
     if key == "db":
-        return re.sub(r"[^0-9]", "", text)
+        return _normalize_dob(text)
     raise ValueError(f"Unsupported field: {key}")
 
 

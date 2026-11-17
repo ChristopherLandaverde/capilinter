@@ -18,15 +18,15 @@ from .emq import EMQReport, calculate_emq_score
 from .hashing import normalize_and_hash_email, normalize_and_hash_field, normalize_and_hash_phone
 
 __all__ = [
-    "validate_capi_payload",
+    "EMQReport",
     "ValidationIssue",
     "ValidationResult",
-    "is_sha256",
-    "is_fb_cookie",
-    "find_duplicate_event_ids",
     "calculate_emq_score",
-    "EMQReport",
+    "find_duplicate_event_ids",
+    "is_fb_cookie",
+    "is_sha256",
     "normalize_and_hash_email",
-    "normalize_and_hash_phone",
     "normalize_and_hash_field",
+    "normalize_and_hash_phone",
+    "validate_capi_payload",
 ]

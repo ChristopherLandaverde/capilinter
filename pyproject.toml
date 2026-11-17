@@ -25,3 +25,25 @@ capi-validator = "server_side_capi_validator.cli:main"
 
 [tool.setuptools]
 packages = ["server_side_capi_validator"]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.6", "mypy>=1.10", "bandit[toml]>=1.7", "build>=1.2"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",    # long user-facing message strings; ruff format owns line length
+    "RUF001",  # glyphs (×, □, ✓) and fullwidth-digit test data are intentional
+]
+
+[tool.mypy]
+files = ["server_side_capi_validator"]
+strict = true
+python_version = "3.10"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
