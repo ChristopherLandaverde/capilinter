@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — Nov 2026
+
+**Agentic: L1 · L2 · L3**, matching AdLinter's levels.
+
+- **Check registry** (`capilinter/checks.py`): all 26 codes with severity, area, why, fix and Meta source. The validator emits only registered codes; tests keep the registry, the code and `docs/meta-rules.md` in step.
+- **L1:** the JSON report has `schema_version: 1` and a JSON Schema (`docs/schema/report-v1.json`); each issue carries `fix` and `source`. New `capilinter checks` and `capilinter explain <CODE>`.
+- **L2:** `capilinter-mcp`, an MCP server over stdio with five read-only tools: `audit_payload`, `hash_value`, `list_checks`, `explain_check`, `read_dataset_quality`. Optional extra: `pip install "capilinter[mcp]"`; the core stays dependency-free.
+- **L3 (fixture-verified):** `capilinter live quality --dataset-id ID` reads Meta's Dataset Quality API read-only and flags EMQ below 6.0, Meta diagnostics, event coverage below goal and server events missing `event_id`. Token from `META_ACCESS_TOKEN` only, sent as a header; a request guard allows only `GET /v25.0/dataset_quality`.
+- `AGENTS.md`; README Agentic section with layer diagram; recorded `explain`, live and MCP runs, re-checked in CI.
+- Offline commands never load network code; only `capilinter/live/http.py` imports a network library.
+
+
 ## 0.3.0 — Nov 2026
 
 **Renamed** to CAPILinter, to sit beside AdLinter under the FOCO naming rule: a public tool is named for what it checks.

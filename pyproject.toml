@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "capilinter"
-version = "0.3.0"
+version = "0.4.0"
 description = "Offline validator for Meta Conversions API (CAPI) payloads: schema, PII hashing, deduplication keys, and an estimated match-quality score."
 readme = "README.md"
 authors = [{ name = "Christopher Landaverde", email = "christopher@focosys.io" }]
@@ -22,12 +22,14 @@ Homepage = "https://focosys.io"
 
 [project.scripts]
 capilinter = "capilinter.cli:main"
+capilinter-mcp = "capilinter.mcp_server:main"
 
 [tool.setuptools]
-packages = ["capilinter"]
+packages = ["capilinter", "capilinter.live"]
 
 [project.optional-dependencies]
-dev = ["ruff>=0.6", "mypy>=1.10", "bandit[toml]>=1.7", "build>=1.2"]
+mcp = ["mcp>=2.3,<3"]
+dev = ["capilinter[mcp]", "jsonschema>=4.20", "ruff>=0.6", "mypy>=1.10", "bandit[toml]>=1.7", "build>=1.2"]
 
 [tool.ruff]
 target-version = "py310"

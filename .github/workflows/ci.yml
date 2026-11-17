@@ -70,14 +70,23 @@ jobs:
           assert not deps, deps
           print("runtime dependencies: none")
           EOF
-      - name: Install the built wheel in a clean venv
+      - name: Core wheel works without the MCP extra
+        run: |
+          python -m venv /tmp/core
+          /tmp/core/bin/pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          /tmp/core/bin/capilinter inspect "$GITHUB_WORKSPACE/fixtures/valid_payload.json"
+          if /tmp/core/bin/capilinter-mcp; then echo "capilinter-mcp should exit non-zero without the mcp extra" >&2; exit 1; fi
+      - name: Install the built wheel with the MCP extra in a clean venv
         run: |
           python -m venv /tmp/clean
-          /tmp/clean/bin/pip install dist/*.whl
+          WHEEL=$(ls dist/*.whl)
+          /tmp/clean/bin/pip install "${WHEEL}[mcp]" "jsonschema>=4.20"
       - name: Acceptance tests against the installed wheel (AC7)
         run: |
           cd "$RUNNER_TEMP"
           CAPI_TEST_INSTALLED=1 /tmp/clean/bin/python "$GITHUB_WORKSPACE/tests/test_acceptance.py" -v
+          CAPI_TEST_INSTALLED=1 /tmp/clean/bin/python "$GITHUB_WORKSPACE/tests/test_acceptance_v04.py" -v
       - name: CLI flows against the installed wheel
         run: |
           cd "$RUNNER_TEMP"

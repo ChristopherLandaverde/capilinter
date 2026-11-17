@@ -108,9 +108,14 @@ def normalize_and_hash_phone(phone: str, default_country_code: str = "1") -> str
     return _sha256(normalize_phone(phone, default_country_code))
 
 
-def normalize_and_hash_field(key: str, value: str, default_country_code: str = "1") -> str:
+def normalize_value(key: str, value: str, default_country_code: str = "1") -> str:
+    """Normalize any hashed user_data field the way Meta documents. Raises ValueError if it cannot."""
     if key == "em":
-        return normalize_and_hash_email(value)
+        return normalize_email(value)
     if key == "ph":
-        return normalize_and_hash_phone(value, default_country_code)
-    return _sha256(normalize_field(key, value))
+        return normalize_phone(value, default_country_code)
+    return normalize_field(key, value)
+
+
+def normalize_and_hash_field(key: str, value: str, default_country_code: str = "1") -> str:
+    return _sha256(normalize_value(key, value, default_country_code))

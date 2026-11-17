@@ -5,6 +5,8 @@
 Sources:
 - **[CIP]** Customer Information Parameters ↗ https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters
 - **[SEP]** Server Event Parameters ↗ https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/server-event
+- **[DQ]** Dataset Quality API ↗ https://developers.facebook.com/docs/marketing-api/conversions-api/dataset-quality-api
+- **[VER]** Verifying your setup ↗ https://developers.facebook.com/documentation/ads-commerce/conversions-api/verifying-setup
 
 Status: `✓` matches the doc · `+` fixed in v0.2.0 to match the doc · `□` stricter than the doc, on purpose (reason given).
 
@@ -41,9 +43,21 @@ Hashed keys must be SHA-256, lowercase hex. A raw value is an ERROR (`RAW_PII_UN
 | `fbp` | `fb.<subdomain_index>.<creation_time>.<random>`, not hashed | 13-digit millisecond `creation_time` required; else `MALFORMED_FBP` WARNING, no score credit | `fb.1.1596403881668.1116446470` | ✓ |
 | `client_ip_address`, `client_user_agent` | not hashed | sent as captured | — | ✓ |
 
+## Live: Dataset Quality API (L3, fixture-verified)
+
+`capilinter live quality` and the `read_dataset_quality` MCP tool call `GET https://graph.facebook.com/v25.0/dataset_quality` for website events, read-only, and report Meta's own numbers. Tested only against synthetic responses in `fixtures/live/`, shaped after the samples on the DQ page.
+
+| Rule | Code | Severity | Source | Status |
+|---|---|---|---|---|
+| Event Match Quality of 6.0 or higher is recommended | `LIVE_EMQ_BELOW_RECOMMENDED` | WARNING | VER | ✓ |
+| Meta's EMQ diagnostics (name, share of events affected, Meta's solution) passed through | `LIVE_EMQ_DIAGNOSTIC` | WARNING | DQ | ✓ |
+| Event coverage below Meta's `goal_percentage` | `LIVE_EVENT_COVERAGE_BELOW_GOAL` | WARNING | DQ | ✓ |
+| Server events carrying the `event_id` dedup key below 100% | `LIVE_SERVER_DEDUP_KEY_LOW` | WARNING | DQ | □ Meta reports the share; it does not state a threshold. Anything under 100% means some server events cannot be deduplicated, so it is flagged. |
+
 ## Known limits
 
 - Ambiguous dates such as `03/04/1997` are read month-first (US), following Meta's own example. Send `YYYY-MM-DD` to avoid guessing.
 - US state names (`California`) normalize to `california`, not `ca`: the tool does not map names to codes. Send the 2-letter code.
 - "At least one user_data parameter" follows Meta's literal rule, so an event with only `client_ip_address` passes. Its estimated match quality will be POOR.
+- Live mode has not been run against a real dataset. It sends the token in an `Authorization: Bearer` header rather than the `access_token` query parameter Meta's examples use, to keep the token out of URLs; that header form is not yet verified against Meta's API.
 - Match-quality scoring is a heuristic. Meta does not publish its Event Match Quality formula.

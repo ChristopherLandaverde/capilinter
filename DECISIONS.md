@@ -52,3 +52,16 @@ A different model reviewed `build/standard`; no high-severity findings. Each fin
 - **Demo image generated, not captured.** A screenshot drifts from the code. The SVG is drawn from recorded CLI output and CI fails if it changes, so the picture is evidence.
 - **Logo:** two signal lines, browser and server, merging into one event: deduplication, the tool's main job. Navy tile like AdLinter's, so the two read as one family.
 - **Static badges** for version, Python and dependencies. They need no network service; the CI badge is live.
+
+## v0.4.0 agentic (branch `build/agentic`, spec: SPEC.md)
+
+- **Approved choices (Nov 16, 2026):** official MCP SDK as an optional `mcp` extra; L3 included, fixture-verified only.
+- **MCP SDK 2.x.** The current SDK is 2.x (`MCPServer`, not 1.x `FastMCP`). Pinned `mcp>=2.3,<3`. The `dev` extra references `capilinter[mcp]` so the pin lives in one place.
+- **One report builder** (`capilinter/report.py`) feeds the CLI and the MCP server, so their JSON is identical by construction; the CLI text is rendered from the same dict. Text output is unchanged (recorded runs identical).
+- **`payload_json` accepts text or an already-parsed object.** The SDK parses JSON-looking string arguments before validation, so an agent sending the payload as text arrived as an object and was rejected. Found by the acceptance tests.
+- **Network code is loaded only for `live`.** The acceptance test that disables sockets showed offline commands imported `urllib.request` at startup. Imports moved into the live command and MCP tool.
+- **Token as `Authorization: Bearer` header,** not the `access_token` query parameter Meta's examples use, to keep it out of URLs and logs. Not verified against Meta's API; listed as a known limit.
+- **Live flags are WARNINGs;** `--strict` fails on them. They report Meta's own measurements, not payload defects. Dedup-key coverage below 100% is flagged although Meta states no threshold (marked `□` in docs/meta-rules.md).
+- **Test changes, both tightening:** the guard test asserted any `Exception`; it now asserts `RequestRefused` and that the allowed request passes. The packaging test treated `capilinter[mcp]` (the package's own extra) as an MCP dependency by substring match; it now compares the requirement name and also asserts the `mcp` extra exists.
+- **`claude mcp add` verified** in a scratch project against the installed 0.4.0 wheel (`claude mcp list`: Connected), then removed. Claude Desktop and Cursor configs not run.
+- **v0.2 build docs archived** to `docs/build/`; SPEC/PLAN/PROGRESS at the root now describe v0.4.0.

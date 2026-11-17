@@ -10,6 +10,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import checks
+
 SHA256_LOWER = re.compile(r"^[a-f0-9]{64}$")
 SHA256_ANYCASE = re.compile(r"^[a-fA-F0-9]{64}$")
 
@@ -39,10 +41,18 @@ FB_COOKIE = re.compile(r"^fb\.[0-2]\.\d{13}\.\S+$")
 
 @dataclass
 class ValidationIssue:
-    severity: str  # "ERROR" or "WARNING"
+    severity: str  # checks.ERROR or checks.WARNING
     code: str
     message: str
     field: str
+    fix: str = ""
+    source: str = ""
+
+
+def _issue(code: str, message: str, field: str) -> ValidationIssue:
+    """Build an issue from the registry, so severity, fix and source live in one place."""
+    check = checks.get(code)
+    return ValidationIssue(check.severity, code, message, field, check.fix, check.source)
 
 
 @dataclass
@@ -52,11 +62,11 @@ class ValidationResult:
 
     @property
     def errors(self) -> list[ValidationIssue]:
-        return [i for i in self.issues if i.severity == "ERROR"]
+        return [i for i in self.issues if i.severity == checks.ERROR]
 
     @property
     def warnings(self) -> list[ValidationIssue]:
-        return [i for i in self.issues if i.severity == "WARNING"]
+        return [i for i in self.issues if i.severity == checks.WARNING]
 
 
 def is_sha256(val: Any) -> bool:
@@ -82,8 +92,7 @@ def _check_hashed_field(key: str, value: Any, issues: list[ValidationIssue]) -> 
         return
     if SHA256_ANYCASE.match(text):
         issues.append(
-            ValidationIssue(
-                "WARNING",
+            _issue(
                 "HASH_NOT_LOWERCASE",
                 f"'{key}' looks like SHA-256 but uses uppercase hex. Send lowercase hex.",
                 path,
@@ -92,8 +101,7 @@ def _check_hashed_field(key: str, value: Any, issues: list[ValidationIssue]) -> 
         return
     if key == "em" and "@" in text:
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "RAW_PII_UNHASHED_EMAIL",
                 "Found a raw email address. Normalize (trim, lowercase) and SHA-256 hash it.",
                 path,
@@ -102,8 +110,7 @@ def _check_hashed_field(key: str, value: Any, issues: list[ValidationIssue]) -> 
         return
     if key == "ph" and re.fullmatch(r"[\d\s()+\-.]{7,}", text):
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "RAW_PII_UNHASHED_PHONE",
                 "Found a raw phone number. Normalize to digits with country code (no '+') and SHA-256 hash it.",
                 path,
@@ -111,8 +118,7 @@ def _check_hashed_field(key: str, value: Any, issues: list[ValidationIssue]) -> 
         )
         return
     issues.append(
-        ValidationIssue(
-            "ERROR",
+        _issue(
             "INVALID_SHA256",
             f"'{key}' is not a 64-character lowercase SHA-256 hex string. "
             f"Normalize it and hash it (capilinter hash --field {key} VALUE).",
@@ -125,26 +131,21 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     """Validate one CAPI event. `now` (Unix seconds) is injectable for tests."""
     issues: list[ValidationIssue] = []
     if not isinstance(event, dict):
-        issues.append(ValidationIssue("ERROR", "INVALID_EVENT", "Event must be a JSON object.", "$"))
+        issues.append(_issue("INVALID_EVENT", "Event must be a JSON object.", "$"))
         return ValidationResult(is_valid=False, issues=issues)
 
     now = int(time.time()) if now is None else now
 
     # 1. Root attributes
     if not event.get("event_name"):
-        issues.append(ValidationIssue("ERROR", "MISSING_EVENT_NAME", "Event is missing 'event_name'.", "event_name"))
+        issues.append(_issue("MISSING_EVENT_NAME", "Event is missing 'event_name'.", "event_name"))
 
     event_time = event.get("event_time")
     if event_time is None:
-        issues.append(
-            ValidationIssue(
-                "ERROR", "MISSING_EVENT_TIME", "Event is missing 'event_time' (Unix seconds).", "event_time"
-            )
-        )
+        issues.append(_issue("MISSING_EVENT_TIME", "Event is missing 'event_time' (Unix seconds).", "event_time"))
     elif isinstance(event_time, bool) or not isinstance(event_time, (int, float)):
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "INVALID_EVENT_TIME_TYPE",
                 "'event_time' must be a Unix timestamp in seconds (a number, not a string).",
                 "event_time",
@@ -152,8 +153,7 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
         )
     elif not math.isfinite(event_time) or event_time <= 0:
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "INVALID_EVENT_TIME_VALUE",
                 "'event_time' must be a positive, finite Unix timestamp.",
                 "event_time",
@@ -162,21 +162,17 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     else:
         if event_time > 10_000_000_000:
             issues.append(
-                ValidationIssue(
-                    "ERROR",
+                _issue(
                     "EVENT_TIME_IN_MILLISECONDS",
                     "'event_time' looks like milliseconds. Send seconds.",
                     "event_time",
                 )
             )
         elif event_time > now + FUTURE_SKEW_SECONDS:
-            issues.append(
-                ValidationIssue("ERROR", "EVENT_TIME_IN_FUTURE", "'event_time' is in the future.", "event_time")
-            )
+            issues.append(_issue("EVENT_TIME_IN_FUTURE", "'event_time' is in the future.", "event_time"))
         elif now - event_time > MAX_EVENT_AGE_SECONDS:
             issues.append(
-                ValidationIssue(
-                    "WARNING",
+                _issue(
                     "EVENT_TIME_STALE",
                     "'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.",
                     "event_time",
@@ -187,8 +183,7 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     event_id = event.get("event_id")
     if event_id is None or event_id == "":
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "MISSING_EVENT_ID",
                 "Missing 'event_id'. Browser-to-server deduplication needs the same event_id + event_name on pixel and server events.",
                 "event_id",
@@ -198,15 +193,10 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     # 3. Action source
     action_source = event.get("action_source")
     if action_source is None or action_source == "":
-        issues.append(
-            ValidationIssue(
-                "ERROR", "MISSING_ACTION_SOURCE", "'action_source' is required (e.g. 'website').", "action_source"
-            )
-        )
+        issues.append(_issue("MISSING_ACTION_SOURCE", "'action_source' is required (e.g. 'website').", "action_source"))
     elif not isinstance(action_source, str) or action_source not in VALID_ACTION_SOURCES:
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "INVALID_ACTION_SOURCE",
                 f"{action_source!r} is not a valid action_source ({', '.join(sorted(VALID_ACTION_SOURCES))}).",
                 "action_source",
@@ -216,7 +206,7 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     # 4. user_data
     user_data = event.get("user_data", {})
     if not isinstance(user_data, dict):
-        issues.append(ValidationIssue("ERROR", "INVALID_USER_DATA", "'user_data' must be a JSON object.", "user_data"))
+        issues.append(_issue("INVALID_USER_DATA", "'user_data' must be a JSON object.", "user_data"))
         user_data = {}
 
     for key in HASHED_KEYS:
@@ -226,8 +216,7 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     if action_source == "website":
         if not user_data.get("client_user_agent"):
             issues.append(
-                ValidationIssue(
-                    "ERROR",
+                _issue(
                     "MISSING_CLIENT_USER_AGENT",
                     "Website events require 'user_data.client_user_agent'.",
                     "user_data.client_user_agent",
@@ -235,21 +224,19 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
             )
         if not event.get("event_source_url"):
             issues.append(
-                ValidationIssue(
-                    "ERROR",
+                _issue(
                     "MISSING_EVENT_SOURCE_URL",
                     "Website events require 'event_source_url'.",
                     "event_source_url",
                 )
             )
 
-    for key, tail in (("fbc", "fbclid"), ("fbp", "random number")):
+    for key, tail, code in (("fbc", "fbclid", "MALFORMED_FBC"), ("fbp", "random number", "MALFORMED_FBP")):
         value = user_data.get(key)
         if value and not is_fb_cookie(value):
             issues.append(
-                ValidationIssue(
-                    "WARNING",
-                    f"MALFORMED_{key.upper()}",
+                _issue(
+                    code,
                     f"'{key}' should look like fb.1.<ms timestamp>.<{tail}>. Do not hash it.",
                     f"user_data.{key}",
                 )
@@ -258,15 +245,14 @@ def validate_capi_payload(event: dict[str, Any], now: int | None = None) -> Vali
     # Meta: "You must include at least one user_data parameter."
     if not any(v not in (None, "", []) for v in user_data.values()):
         issues.append(
-            ValidationIssue(
-                "ERROR",
+            _issue(
                 "NO_CUSTOMER_INFORMATION",
                 "user_data is empty. Meta requires at least one correctly formatted user_data parameter.",
                 "user_data",
             )
         )
 
-    is_valid = not any(i.severity == "ERROR" for i in issues)
+    is_valid = not any(i.severity == checks.ERROR for i in issues)
     return ValidationResult(is_valid=is_valid, issues=issues)
 
 
@@ -284,8 +270,7 @@ def find_duplicate_event_ids(events: list[Any]) -> list[ValidationIssue]:
         key = (str(event.get("event_name")), str(event.get("event_id")))
         if key in seen:
             issues.append(
-                ValidationIssue(
-                    "WARNING",
+                _issue(
                     "DUPLICATE_EVENT_ID",
                     f"Event {idx} repeats event_name/event_id {key} from event {seen[key]}; Meta will deduplicate one of them.",
                     f"data[{idx - 1}].event_id",

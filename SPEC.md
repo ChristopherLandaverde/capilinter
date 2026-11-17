@@ -1,6 +1,6 @@
 # SPEC — CAPILinter v0.4.0, agentic
 
-`Build spec / v0.4.0` · Nov 2026 · Branch `build/agentic` · Status: awaiting approval · Earlier builds: [docs/build/](docs/build/)
+`Build spec / v0.4.0` · Nov 2026 · Branch `build/agentic` · Status: approved Nov 16, 2026 (MCP via official SDK as optional extra; L3 included, fixture-verified) · Earlier builds: [docs/build/](docs/build/)
 
 Scope gate: this adds to CAPILinter while AdLinter → focosys.io is still the current loop. Christopher asked for it on Nov 16, 2026; treated as an override.
 
@@ -32,12 +32,26 @@ CAPILinter is a good tool for a person at a terminal. An agent (Claude Code, Cla
    - A README "Agentic" section in AdLinter's format: a layer diagram, an "Ask your agent…" table, and setup lines for Claude Code, Claude Desktop and Cursor.
    - A real recorded MCP call, run in CI.
    - `AGENTS.md`, telling any agent how to use the tool and not to recompute verdicts.
-5. **Privacy statement for MCP.** The server makes no network calls, and a test enforces that. Tool results go to the model behind the agent, and the README says so plainly, as AdLinter's does.
-6. **Version 0.4.0.** CHANGELOG, DECISIONS and PROGRESS updated.
+5. **L3, live read (fixture-verified).**
+   - `capilinter live quality --dataset-id <id> [--agent-name <name>] [--json]` reads Meta's Dataset Quality API: `GET https://graph.facebook.com/v25.0/dataset_quality`, website events.
+   - It reports Meta's own numbers per event: Event Match Quality composite score, match-key coverage, diagnostics, event coverage against its goal, deduplication-key coverage and data freshness.
+   - It flags, with registry codes:
+     - EMQ below 6.0, the threshold Meta's setup guide recommends
+     - server events missing the dedup key
+     - event coverage below Meta's goal
+     - Meta's own EMQ diagnostics, passed through
+   - The token comes only from the `META_ACCESS_TOKEN` environment variable. It is never a flag, and never printed or logged.
+   - A request guard allows only `GET` to `graph.facebook.com/<version>/dataset_quality`. Anything else is refused before it is sent.
+   - All network access goes through one module, `capilinter/live/http.py`.
+   - Tested only against synthetic API responses (`fixtures/live/`), never a real account or token. The README says "fixture-verified", as AdLinter does.
+   - A fifth MCP tool, `read_dataset_quality`, uses the same code path.
+6. **Privacy statement for MCP.** Offline tools make no network calls, and a test enforces that. Only the L3 tool reaches the network, and only Meta's Dataset Quality endpoint. Tool results go to the model behind the agent, and the README says so plainly, as AdLinter's does.
+7. **Version 0.4.0.** CHANGELOG, DECISIONS and PROGRESS updated.
 
 ## Out of scope
 
-- L3 live read (Meta's APIs, Events Manager, dataset quality). It needs Meta access tokens; see question 2.
+- L3 against a real account or token. It is fixture-verified only; running it for real is Christopher's call, with his own token.
+- Any Meta endpoint other than `dataset_quality`; offline, app or physical-store quality data.
 - Sending events, or any write to Meta.
 - Publishing to PyPI or an MCP registry.
 - LinkedIn or other conversion APIs.
@@ -50,10 +64,12 @@ CAPILinter is a good tool for a person at a terminal. An agent (Claude Code, Cla
 | AC1 | Registry is the single source | test: every code `core.py` can emit is in the registry; every registry code has a test that triggers it; every code appears in `docs/meta-rules.md` |
 | AC2 | JSON report is versioned and valid | `capilinter inspect <fixture> --json` validates against `docs/schema/report-v1.json` for every fixture; `schema_version == 1` |
 | AC3 | `checks` and `explain` work | `capilinter checks --json` lists every registry code; `capilinter explain MISSING_EVENT_ID --json` returns why, fix and a `developers.facebook.com` source; unknown code → exit 2 |
-| AC4 | MCP server lists exactly 4 read-only tools | stdio client: `tools/list` returns `audit_payload`, `hash_value`, `list_checks`, `explain_check` |
+| AC4 | MCP server lists exactly 5 read-only tools | stdio client: `tools/list` returns `audit_payload`, `hash_value`, `list_checks`, `explain_check`, `read_dataset_quality` |
 | AC5 | MCP results equal CLI results | `audit_payload` on each fixture returns JSON identical to `capilinter inspect --json`; `hash_value` equals `capilinter hash` |
 | AC6 | MCP bad input is a tool error, not a crash | relative path, missing file, both path and text, unknown field → `error.kind` is `usage` or `refused`; the server stays up for the next call |
-| AC7 | No network | test: importing and running the package with sockets disabled passes every MCP and CLI flow |
+| AC7 | Network only through the live module | test: with sockets disabled, every offline CLI and MCP flow passes; only `capilinter/live/http.py` imports a network library |
+| AC12 | L3 reads Meta's numbers correctly | `live quality` against each synthetic response in `fixtures/live/` reports Meta's scores verbatim and raises the documented codes; output identical through CLI `--json` and the MCP tool |
+| AC13 | L3 guard and token handling | non-GET, other hosts and other paths are refused with no request sent; a missing token gives exit 2 / `error.kind = "credentials"`; the token never appears in output, errors or the request log |
 | AC8 | Core stays dependency-free | built wheel: no runtime `Requires-Dist`; the MCP SDK only under the `mcp` extra; `capilinter` CLI works without it |
 | AC9 | Installed-wheel run | AC2–AC6 pass against `pip install dist/*.whl[mcp]` in a clean venv, from outside the repo |
 | AC10 | Gates and CI | ruff, ruff format, mypy --strict, bandit clean; CI green on Python 3.10–3.14 |
@@ -74,8 +90,8 @@ CAPILinter is a good tool for a person at a terminal. An agent (Claude Code, Cla
 
 ## Brought back to you
 
-1. **The MCP library.** Recommended: the official `mcp` SDK as an *optional* extra (`pip install "capilinter[mcp]"`). The core stays at zero dependencies and protocol details stay correct as MCP evolves. The alternative is a hand-written stdio JSON-RPC server: zero dependencies everywhere, but more code to keep in step with the protocol.
-2. **L3 live read.** Recommended: not in this build. Reading Meta's dataset quality data needs a Meta access token, which means creating secrets, and it touches live client stacks. Both are red tier. A later build could add it fixture-verified, as AdLinter did.
+1. ~~The MCP library~~: decided Nov 16. The official `mcp` SDK as an optional extra.
+2. **Running L3 against a real dataset.** Christopher's call, with his own token.
 3. **Merging into `main`.** Red tier, as before.
 
 Budget: 4h wall clock, 3 failed attempts per problem. Review at the end by a different model than the one that writes the code.

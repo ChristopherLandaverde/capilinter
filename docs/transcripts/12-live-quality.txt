@@ -1,0 +1,32 @@
+$ CAPILINTER_LIVE_FIXTURE=fixtures/live/dataset_quality_issues.json META_ACCESS_TOKEN=<synthetic> capilinter live quality --dataset-id 123456789
+============================================================
+DATASET QUALITY RECORD: dataset 123456789  (Meta API v25.0)
+============================================================
+
+Purchase
+  Event Match Quality (Meta): 4.7/10
+  Match keys: email 38%, user_agent 100%, ip_address 100%
+  Event coverage: 81% (goal 75%)
+  Dedup key event_id: server 100%, browser 100%
+  Data freshness: real_time
+  □ WARNING   LIVE_EMQ_BELOW_RECOMMENDED: Event Match Quality is 4.7/10; Meta recommends 6.0 or higher.
+  □ WARNING   LIVE_EMQ_DIAGNOSTIC: Meta diagnostic: Server sending mismatched IP addresses (61.5% of events, 19567 of 31830). Meta's solution: Synthetic fixture: forward the visitor IP, not the server's.
+
+Lead
+  Event Match Quality (Meta): 7.2/10
+  Match keys: email 100%
+  Event coverage: 34.1% (goal 75%)
+  Dedup key event_id: server 100%, browser 100%
+  Data freshness: hourly
+  □ WARNING   LIVE_EVENT_COVERAGE_BELOW_GOAL: Event coverage is 34.1%; Meta's goal is 75%.
+
+AddToCart
+  Event Match Quality (Meta): 6.4/10
+  Match keys: fbp 98%
+  Event coverage: 90% (goal 75%)
+  Dedup key event_id: server 62.0%, browser 100%
+  Data freshness: real_time
+  □ WARNING   LIVE_SERVER_DEDUP_KEY_LOW: 62.0% of server events carry event_id; the rest cannot be deduplicated against the pixel.
+
+Result: PASS
+[exit 0]

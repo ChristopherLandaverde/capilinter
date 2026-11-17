@@ -1,0 +1,148 @@
+{
+  "web": [
+    {
+      "event_name": "Purchase",
+      "event_match_quality": {
+        "composite_score": 4.7,
+        "match_key_feedback": [
+          {
+            "identifier": "email",
+            "coverage": {
+              "percentage": 38
+            }
+          },
+          {
+            "identifier": "user_agent",
+            "coverage": {
+              "percentage": 100
+            }
+          },
+          {
+            "identifier": "ip_address",
+            "coverage": {
+              "percentage": 100
+            }
+          }
+        ],
+        "diagnostics": [
+          {
+            "name": "Server sending mismatched IP addresses",
+            "description": "Synthetic fixture: IP addresses sent from the server do not match the browser's.",
+            "solution": "Synthetic fixture: forward the visitor IP, not the server's.",
+            "percentage": 61.5,
+            "affected_event_count": 19567,
+            "total_event_count": 31830
+          }
+        ]
+      },
+      "event_coverage": {
+        "percentage": 81,
+        "goal_percentage": 75,
+        "description": "Synthetic fixture."
+      },
+      "dedupe_key_feedback": [
+        {
+          "dedupe_key": "event_id",
+          "browser_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "server_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "overall_browser_coverage_from_dedupe_key": {
+            "percentage": 88.0,
+            "description": "Synthetic fixture."
+          }
+        }
+      ],
+      "data_freshness": {
+        "upload_frequency": "real_time",
+        "description": "Synthetic fixture."
+      }
+    },
+    {
+      "event_name": "Lead",
+      "event_match_quality": {
+        "composite_score": 7.2,
+        "match_key_feedback": [
+          {
+            "identifier": "email",
+            "coverage": {
+              "percentage": 100
+            }
+          }
+        ],
+        "diagnostics": []
+      },
+      "event_coverage": {
+        "percentage": 34.1,
+        "goal_percentage": 75,
+        "description": "Synthetic fixture."
+      },
+      "dedupe_key_feedback": [
+        {
+          "dedupe_key": "event_id",
+          "browser_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "server_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "overall_browser_coverage_from_dedupe_key": {
+            "percentage": 34.1,
+            "description": "Synthetic fixture."
+          }
+        }
+      ],
+      "data_freshness": {
+        "upload_frequency": "hourly",
+        "description": "Synthetic fixture."
+      }
+    },
+    {
+      "event_name": "AddToCart",
+      "event_match_quality": {
+        "composite_score": 6.4,
+        "match_key_feedback": [
+          {
+            "identifier": "fbp",
+            "coverage": {
+              "percentage": 98
+            }
+          }
+        ],
+        "diagnostics": []
+      },
+      "event_coverage": {
+        "percentage": 90,
+        "goal_percentage": 75,
+        "description": "Synthetic fixture."
+      },
+      "dedupe_key_feedback": [
+        {
+          "dedupe_key": "event_id",
+          "browser_events_with_dedupe_key": {
+            "percentage": 100,
+            "description": "Synthetic fixture."
+          },
+          "server_events_with_dedupe_key": {
+            "percentage": 62.0,
+            "description": "Synthetic fixture."
+          },
+          "overall_browser_coverage_from_dedupe_key": {
+            "percentage": 62.0,
+            "description": "Synthetic fixture."
+          }
+        }
+      ],
+      "data_freshness": {
+        "upload_frequency": "real_time",
+        "description": "Synthetic fixture."
+      }
+    }
+  ]
+}
