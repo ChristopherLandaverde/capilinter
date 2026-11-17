@@ -1,5 +1,6 @@
 """Schema, hashing, and deduplication checks for a single CAPI event."""
 
+import math
 import re
 import time
 from dataclasses import dataclass, field
@@ -20,6 +21,9 @@ VALID_ACTION_SOURCES = {
 
 # user_data keys Meta expects hashed (SHA-256, lowercase hex).
 HASHED_KEYS = ("em", "ph", "fn", "ln", "ge", "db", "ct", "st", "zp", "country")
+
+# fb.<subdomain index 0-2>.<creation time in ms>.<fbclid or random number>
+FB_COOKIE = re.compile(r"^fb\.[0-2]\.\d{10,13}\.\S+$")
 
 
 @dataclass
@@ -47,6 +51,11 @@ class ValidationResult:
 def is_sha256(val: Any) -> bool:
     """True only for a 64-char lowercase hex string (the form Meta expects)."""
     return isinstance(val, str) and bool(SHA256_LOWER.match(val))
+
+
+def is_fb_cookie(val: Any) -> bool:
+    """True for an fbc/fbp value in Meta's fb.<0-2>.<ms timestamp>.<id> form."""
+    return isinstance(val, str) and bool(FB_COOKIE.match(val))
 
 
 def _as_list(value: Any) -> List[Any]:
@@ -77,7 +86,8 @@ def _check_hashed_field(key: str, value: Any, issues: List[ValidationIssue]) -> 
         return
     issues.append(ValidationIssue(
         "ERROR", "INVALID_SHA256",
-        f"'{key}' is not a 64-character lowercase SHA-256 hex string.", path))
+        f"'{key}' is not a 64-character lowercase SHA-256 hex string. "
+        f"Normalize it and hash it (capi-validator hash --field {key} VALUE).", path))
 
 
 def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> ValidationResult:
@@ -97,7 +107,9 @@ def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> V
     if event_time is None:
         issues.append(ValidationIssue("ERROR", "MISSING_EVENT_TIME", "Event is missing 'event_time' (Unix seconds).", "event_time"))
     elif isinstance(event_time, bool) or not isinstance(event_time, (int, float)):
-        issues.append(ValidationIssue("ERROR", "INVALID_EVENT_TIME_TYPE", "'event_time' must be a Unix timestamp in seconds.", "event_time"))
+        issues.append(ValidationIssue("ERROR", "INVALID_EVENT_TIME_TYPE", "'event_time' must be a Unix timestamp in seconds (a number, not a string).", "event_time"))
+    elif not math.isfinite(event_time) or event_time <= 0:
+        issues.append(ValidationIssue("ERROR", "INVALID_EVENT_TIME_VALUE", "'event_time' must be a positive, finite Unix timestamp.", "event_time"))
     else:
         if event_time > 10_000_000_000:
             issues.append(ValidationIssue("ERROR", "EVENT_TIME_IN_MILLISECONDS", "'event_time' looks like milliseconds. Send seconds.", "event_time"))
@@ -107,7 +119,8 @@ def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> V
             issues.append(ValidationIssue("WARNING", "EVENT_TIME_STALE", "'event_time' is older than 7 days; Meta may reject it.", "event_time"))
 
     # 2. Deduplication key
-    if not event.get("event_id"):
+    event_id = event.get("event_id")
+    if event_id is None or event_id == "":
         issues.append(ValidationIssue(
             "ERROR", "MISSING_EVENT_ID",
             "Missing 'event_id'. Browser-to-server deduplication needs the same event_id + event_name on pixel and server events.",
@@ -115,10 +128,12 @@ def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> V
 
     # 3. Action source
     action_source = event.get("action_source")
-    if not action_source:
+    if action_source is None or action_source == "":
         issues.append(ValidationIssue("ERROR", "MISSING_ACTION_SOURCE", "'action_source' is required (e.g. 'website').", "action_source"))
-    elif action_source not in VALID_ACTION_SOURCES:
-        issues.append(ValidationIssue("WARNING", "UNUSUAL_ACTION_SOURCE", f"'{action_source}' is not a standard action_source.", "action_source"))
+    elif not isinstance(action_source, str) or action_source not in VALID_ACTION_SOURCES:
+        issues.append(ValidationIssue(
+            "ERROR", "INVALID_ACTION_SOURCE",
+            f"{action_source!r} is not a valid action_source ({', '.join(sorted(VALID_ACTION_SOURCES))}).", "action_source"))
 
     # 4. user_data
     user_data = event.get("user_data", {})
@@ -137,15 +152,15 @@ def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> V
                 "Website events require 'user_data.client_user_agent'.", "user_data.client_user_agent"))
         if not event.get("event_source_url"):
             issues.append(ValidationIssue(
-                "WARNING", "MISSING_EVENT_SOURCE_URL",
-                "Website events should include 'event_source_url'.", "event_source_url"))
+                "ERROR", "MISSING_EVENT_SOURCE_URL",
+                "Website events require 'event_source_url'.", "event_source_url"))
 
-    fbc = user_data.get("fbc")
-    if fbc and not str(fbc).startswith("fb."):
-        issues.append(ValidationIssue("WARNING", "MALFORMED_FBC", "'fbc' should look like fb.1.<timestamp>.<fbclid>. Do not hash it.", "user_data.fbc"))
-    fbp = user_data.get("fbp")
-    if fbp and not str(fbp).startswith("fb."):
-        issues.append(ValidationIssue("WARNING", "MALFORMED_FBP", "'fbp' should look like fb.1.<timestamp>.<random>. Do not hash it.", "user_data.fbp"))
+    for key, tail in (("fbc", "fbclid"), ("fbp", "random number")):
+        value = user_data.get(key)
+        if value and not is_fb_cookie(value):
+            issues.append(ValidationIssue(
+                "WARNING", f"MALFORMED_{key.upper()}",
+                f"'{key}' should look like fb.1.<ms timestamp>.<{tail}>. Do not hash it.", f"user_data.{key}"))
 
     if not any(user_data.get(k) for k in ("em", "ph", "external_id", "fbp", "fbc", "client_ip_address")):
         issues.append(ValidationIssue(
@@ -155,3 +170,25 @@ def validate_capi_payload(event: Dict[str, Any], now: Optional[int] = None) -> V
 
     is_valid = not any(i.severity == "ERROR" for i in issues)
     return ValidationResult(is_valid=is_valid, issues=issues)
+
+
+def find_duplicate_event_ids(events: List[Any]) -> List[ValidationIssue]:
+    """Flag (event_name, event_id) pairs that repeat inside one batch.
+
+    Meta deduplicates on that pair, so a repeat inside one request drops
+    real conversions.
+    """
+    seen: Dict[Any, int] = {}
+    issues: List[ValidationIssue] = []
+    for idx, event in enumerate(events, 1):
+        if not isinstance(event, dict) or event.get("event_id") in (None, ""):
+            continue
+        key = (str(event.get("event_name")), str(event.get("event_id")))
+        if key in seen:
+            issues.append(ValidationIssue(
+                "WARNING", "DUPLICATE_EVENT_ID",
+                f"Event {idx} repeats event_name/event_id {key} from event {seen[key]}; Meta will deduplicate one of them.",
+                f"data[{idx - 1}].event_id"))
+        else:
+            seen[key] = idx
+    return issues

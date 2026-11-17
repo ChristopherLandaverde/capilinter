@@ -28,4 +28,7 @@ jobs:
         run: |
           capi-validator --version
           capi-validator inspect fixtures/valid_payload.json
-          ! capi-validator inspect fixtures/unhashed_pii.json
+          if capi-validator inspect fixtures/unhashed_pii.json; then
+            echo "unhashed_pii.json should have failed validation" >&2
+            exit 1
+          fi
