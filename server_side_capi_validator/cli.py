@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from . import __version__
 from .core import find_duplicate_event_ids, validate_capi_payload
@@ -14,7 +14,7 @@ from .hashing import normalize_and_hash_field
 HASHABLE_FIELDS = ("em", "ph", "fn", "ln", "ct", "st", "zp", "country", "ge", "db")
 
 
-def _extract_events(data: Any) -> Optional[List[Any]]:
+def _extract_events(data: Any) -> list[Any] | None:
     """Return the list of events, or None if the shape is not a CAPI payload."""
     if isinstance(data, dict) and "data" in data:
         return data["data"] if isinstance(data["data"], list) else None
@@ -45,10 +45,16 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
 
     events = _extract_events(data)
     if events is None:
-        print(f"[ERROR] {file_path} is not a CAPI payload (expected an event object, a list, or {{\"data\": [...]}}).", file=sys.stderr)
+        print(
+            f'[ERROR] {file_path} is not a CAPI payload (expected an event object, a list, or {{"data": [...]}}).',
+            file=sys.stderr,
+        )
         return 2
     if not events:
-        print(f"[ERROR] {file_path} contains no events.", file=sys.stderr)
+        message = f"{file_path} contains no events."
+        print(f"[ERROR] {message}", file=sys.stderr)
+        if as_json:
+            print(json.dumps({"file": str(file_path), "passed": False, "error": message, "events": []}, indent=2))
         return 1
 
     batch_issues = find_duplicate_event_ids(events)
@@ -67,23 +73,30 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
             failed = True
 
         if as_json:
-            report.append({
-                "index": idx,
-                "event_name": _field(event, "event_name", None),
-                "event_id": _field(event, "event_id", None),
-                "valid": validation.is_valid,
-                "issues": [vars(i) for i in validation.issues],
-                "emq_estimate": vars(emq),
-            })
+            report.append(
+                {
+                    "index": idx,
+                    "event_name": _field(event, "event_name", None),
+                    "event_id": _field(event, "event_id", None),
+                    "valid": validation.is_valid,
+                    "issues": [vars(i) for i in validation.issues],
+                    "emq_estimate": vars(emq),
+                }
+            )
             continue
 
-        print(f"\n[{idx}/{len(events)}] {_field(event, 'event_name', 'UNKNOWN')}  event_id={_field(event, 'event_id', 'MISSING')}")
-        if validation.is_valid:
+        print(
+            f"\n[{idx}/{len(events)}] {_field(event, 'event_name', 'UNKNOWN')}  event_id={_field(event, 'event_id', 'MISSING')}"
+        )
+        if validation.is_valid and not validation.warnings:
             print("  ✓ VERIFIED  schema, hashing, and dedup-key checks passed")
+        elif validation.is_valid:
+            count = len(validation.warnings)
+            print(f"  □ OBSERVED  no errors, {count} warning{'s' if count != 1 else ''}")
         for err in validation.errors:
             print(f"  × ERROR     {err.code}: {err.message}")
         for warn in validation.warnings:
-            print(f"  ! WARNING   {warn.code}: {warn.message}")
+            print(f"  □ WARNING   {warn.code}: {warn.message}")
         print(f"  Estimated match quality: {emq.score}/10.0 ({emq.grade})")
         print(f"  Matched: {', '.join(emq.matched_parameters) or 'none'}")
         if emq.score < EXCELLENT:
@@ -91,20 +104,25 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
                 print(f"  + {rec}")
 
     if as_json:
-        print(json.dumps({
-            "file": str(file_path),
-            "passed": not failed,
-            "batch_issues": [vars(i) for i in batch_issues],
-            "events": report,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "file": str(file_path),
+                    "passed": not failed,
+                    "batch_issues": [vars(i) for i in batch_issues],
+                    "events": report,
+                },
+                indent=2,
+            )
+        )
     else:
         for issue in batch_issues:
-            print(f"\n  ! WARNING   {issue.code}: {issue.message}")
+            print(f"\n  □ WARNING   {issue.code}: {issue.message}")
         print("\nResult:", "FAIL" if failed else "PASS")
     return 1 if failed else 0
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="capi-validator", description="Offline Meta CAPI payload validator.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -126,7 +144,11 @@ def main(argv: Optional[List[str]] = None) -> None:
         sys.exit(inspect_payload(args.file, strict=args.strict, as_json=args.json))
     if args.command == "hash":
         key = "ph" if args.phone else args.field
-        print(normalize_and_hash_field(key, args.value, args.country_code))
+        try:
+            print(normalize_and_hash_field(key, args.value, args.country_code))
+        except ValueError as exc:
+            print(f"[ERROR] {exc}", file=sys.stderr)
+            sys.exit(2)
 
 
 if __name__ == "__main__":

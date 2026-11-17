@@ -1,0 +1,50 @@
+$ capi-validator inspect fixtures/missing_event_id.json --json
+{
+  "file": "fixtures/missing_event_id.json",
+  "passed": false,
+  "batch_issues": [],
+  "events": [
+    {
+      "index": 1,
+      "event_name": "Purchase",
+      "event_id": null,
+      "valid": false,
+      "issues": [
+        {
+          "severity": "WARNING",
+          "code": "EVENT_TIME_STALE",
+          "message": "'event_time' is older than 7 days. Meta rejects the whole request if any event in it is this old.",
+          "field": "event_time"
+        },
+        {
+          "severity": "ERROR",
+          "code": "MISSING_EVENT_ID",
+          "message": "Missing 'event_id'. Browser-to-server deduplication needs the same event_id + event_name on pixel and server events.",
+          "field": "event_id"
+        }
+      ],
+      "emq_estimate": {
+        "score": 4.0,
+        "grade": "POOR",
+        "matched_parameters": [
+          "Hashed email (em)",
+          "Client IP address",
+          "Client user agent"
+        ],
+        "missing_parameters": [
+          "Hashed phone (ph)",
+          "Click ID (fbc)",
+          "Browser ID (fbp)",
+          "External ID"
+        ],
+        "recommendations": [
+          "Add a SHA-256 hashed phone, digits with country code (+2.5).",
+          "Pass the _fbc cookie, or build it from fbclid on the landing URL (+1.5).",
+          "Forward the _fbp first-party cookie (+1.0).",
+          "Pass a stable CRM or user ID as external_id (+1.0)."
+        ]
+      }
+    }
+  ]
+}
+[exit 1]
