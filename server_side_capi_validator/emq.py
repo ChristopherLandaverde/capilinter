@@ -9,14 +9,14 @@ Manager.
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-from .core import is_sha256
+from .core import is_fb_cookie, is_sha256
 
-# key, label, weight, recommendation, requires_hash
+# key, label, weight, recommendation, format check (True = SHA-256, "fb" = fb cookie)
 WEIGHTS = [
     ("em", "Hashed email (em)", 3.0, "Add a SHA-256 hashed, normalized email (+3.0).", True),
     ("ph", "Hashed phone (ph)", 2.5, "Add a SHA-256 hashed phone, digits with country code (+2.5).", True),
-    ("fbc", "Click ID (fbc)", 1.5, "Pass the _fbc cookie, or build it from fbclid on the landing URL (+1.5).", False),
-    ("fbp", "Browser ID (fbp)", 1.0, "Forward the _fbp first-party cookie (+1.0).", False),
+    ("fbc", "Click ID (fbc)", 1.5, "Pass the _fbc cookie, or build it from fbclid on the landing URL (+1.5).", "fb"),
+    ("fbp", "Browser ID (fbp)", 1.0, "Forward the _fbp first-party cookie (+1.0).", "fb"),
     ("external_id", "External ID", 1.0, "Pass a stable CRM or user ID as external_id (+1.0).", False),
     ("client_ip_address", "Client IP address", 0.5, "Forward the visitor IP from the server container (+0.5).", False),
     ("client_user_agent", "Client user agent", 0.5, "Forward the browser user agent from the server container (+0.5).", False),
@@ -36,11 +36,13 @@ class EMQReport:
     recommendations: List[str]
 
 
-def _present(value: Any, requires_hash: bool) -> bool:
+def _present(value: Any, check: Any) -> bool:
     if not value:
         return False
-    if not requires_hash:
-        return True
+    if check == "fb":
+        return is_fb_cookie(value)
+    if not check:
+        return isinstance(value, (str, int, float)) or (isinstance(value, list) and any(value))
     values = value if isinstance(value, list) else [value]
     return any(is_sha256(v) for v in values)
 
@@ -55,8 +57,8 @@ def calculate_emq_score(event: Dict[str, Any]) -> EMQReport:
     missing: List[str] = []
     recs: List[str] = []
 
-    for key, label, weight, rec, requires_hash in WEIGHTS:
-        if _present(user_data.get(key), requires_hash):
+    for key, label, weight, rec, check in WEIGHTS:
+        if _present(user_data.get(key), check):
             score += weight
             matched.append(label)
         else:

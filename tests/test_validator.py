@@ -7,11 +7,13 @@ import unittest
 from pathlib import Path
 
 from server_side_capi_validator.cli import inspect_payload, main
-from server_side_capi_validator.core import is_sha256, validate_capi_payload
+from server_side_capi_validator.core import find_duplicate_event_ids, is_sha256, validate_capi_payload
 from server_side_capi_validator.emq import calculate_emq_score
 from server_side_capi_validator.hashing import (
     normalize_and_hash_email,
+    normalize_and_hash_field,
     normalize_and_hash_phone,
+    normalize_field,
     normalize_phone,
 )
 
@@ -150,6 +152,115 @@ class TestCLI(unittest.TestCase):
         with contextlib.redirect_stdout(buf):
             main(["hash", "  Jane.Doe@Example.com "])
         self.assertEqual(buf.getvalue().strip(), hashlib.sha256(b"jane.doe@example.com").hexdigest())
+
+
+
+def write_tmp(tmp, name, content):
+    path = Path(tmp) / name
+    if isinstance(content, bytes):
+        path.write_bytes(content)
+    else:
+        path.write_text(content if isinstance(content, str) else json.dumps(content))
+    return path
+
+
+class TestReviewRegressions(unittest.TestCase):
+    """Cases found in independent review (see DECISIONS.md)."""
+
+    def test_unhashable_action_source_is_error_not_crash(self):
+        for bad in (["website"], {"a": 1}, 5):
+            event = load_event("valid_payload.json")
+            event["action_source"] = bad
+            self.assertIn("INVALID_ACTION_SOURCE", codes(validate_capi_payload(event, now=NOW)))
+
+    def test_unknown_action_source_is_error(self):
+        event = load_event("valid_payload.json")
+        event["action_source"] = "bogus"
+        self.assertFalse(validate_capi_payload(event, now=NOW).is_valid)
+
+    def test_website_requires_event_source_url(self):
+        event = load_event("valid_payload.json")
+        del event["event_source_url"]
+        res = validate_capi_payload(event, now=NOW)
+        self.assertFalse(res.is_valid)
+        self.assertIn("MISSING_EVENT_SOURCE_URL", codes(res))
+
+    def test_bad_event_time_values(self):
+        for bad in (float("nan"), float("inf"), -5, 0):
+            event = load_event("valid_payload.json")
+            event["event_time"] = bad
+            self.assertIn("INVALID_EVENT_TIME_VALUE", codes(validate_capi_payload(event, now=NOW)), bad)
+        event = load_event("valid_payload.json")
+        event["event_time"] = "1731600000"
+        self.assertIn("INVALID_EVENT_TIME_TYPE", codes(validate_capi_payload(event, now=NOW)))
+
+    def test_event_id_zero_is_present(self):
+        event = load_event("valid_payload.json")
+        event["event_id"] = 0
+        self.assertNotIn("MISSING_EVENT_ID", codes(validate_capi_payload(event, now=NOW)))
+
+    def test_duplicate_event_ids_in_batch(self):
+        event = load_event("valid_payload.json")
+        issues = find_duplicate_event_ids([event, dict(event), "not an event"])
+        self.assertEqual([i.code for i in issues], ["DUPLICATE_EVENT_ID"])
+
+    def test_fb_cookie_format(self):
+        for bad in ("fb.", "fb.x", "fb.9.1731600000.abc", {"v": 1}):
+            event = load_event("valid_payload.json")
+            event["user_data"]["fbc"] = bad
+            self.assertIn("MALFORMED_FBC", codes(validate_capi_payload(event, now=NOW)), bad)
+            self.assertNotIn("Click ID (fbc)", calculate_emq_score(event).matched_parameters)
+
+    def test_phone_edge_cases(self):
+        self.assertEqual(normalize_phone("0044 20 7946 0958"), "442079460958")
+        self.assertEqual(normalize_phone("+44 (0)20 7946 0958"), "442079460958")
+        self.assertEqual(normalize_phone("５５５ ０１０ ２８３４"), "15550102834")
+        self.assertEqual(normalize_phone("555-010-2834 x12"), "15550102834")
+        self.assertEqual(normalize_phone("555-010-2834 ext. 12"), "15550102834")
+
+    def test_other_field_normalization(self):
+        self.assertEqual(normalize_field("fn", "  Mary-Jane "), "maryjane")
+        self.assertEqual(normalize_field("ct", "San Francisco"), "sanfrancisco")
+        self.assertEqual(normalize_field("st", "CA"), "ca")
+        self.assertEqual(normalize_field("zp", "94103-1234"), "94103")
+        self.assertEqual(normalize_field("zp", "SW1A 1AA"), "sw1a1aa")
+        self.assertEqual(normalize_field("ge", "Female"), "f")
+        self.assertEqual(normalize_field("db", "1990-02-14"), "19900214")
+        self.assertEqual(normalize_and_hash_field("country", "US"), hashlib.sha256(b"us").hexdigest())
+
+    def test_raw_name_points_to_repair(self):
+        event = load_event("valid_payload.json")
+        event["user_data"]["fn"] = "John"
+        issue = next(i for i in validate_capi_payload(event, now=NOW).issues if i.code == "INVALID_SHA256")
+        self.assertIn("--field fn", issue.message)
+
+    def test_cli_rejects_empty_and_unreadable_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(run_inspect(write_tmp(tmp, "empty.json", {"data": []})), 1)
+            self.assertEqual(run_inspect(write_tmp(tmp, "list.json", [])), 1)
+            self.assertEqual(run_inspect(write_tmp(tmp, "shape.json", {"data": "x"})), 2)
+            self.assertEqual(run_inspect(write_tmp(tmp, "scalar.json", "5")), 2)
+            self.assertEqual(run_inspect(write_tmp(tmp, "latin1.json", b"\xff\xfe{}")), 2)
+            self.assertEqual(run_inspect(Path(tmp)), 2)
+
+    def test_cli_handles_non_object_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_tmp(tmp, "mixed.json", [load_event("valid_payload.json"), "oops", 7])
+            self.assertEqual(run_inspect(path), 1)
+
+    def test_strict_fails_on_duplicate_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            event = load_event("valid_payload.json")
+            event["event_time"] = int(__import__("time").time())
+            path = write_tmp(tmp, "dupes.json", {"data": [event, event]})
+            self.assertEqual(run_inspect(path), 0)
+            self.assertEqual(run_inspect(path, strict=True), 1)
+
+    def test_hash_field_cli(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            main(["hash", "--field", "ct", "New York"])
+        self.assertEqual(buf.getvalue().strip(), hashlib.sha256(b"newyork").hexdigest())
 
 
 if __name__ == "__main__":
