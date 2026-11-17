@@ -10,6 +10,7 @@
 - **L3 (fixture-verified):** `capilinter live quality --dataset-id ID` reads Meta's Dataset Quality API read-only and flags EMQ below 6.0, Meta diagnostics, event coverage below goal and server events missing `event_id`. Token from `META_ACCESS_TOKEN` only, sent as a header; a request guard allows only `GET /v25.0/dataset_quality`.
 - `AGENTS.md`; README Agentic section with layer diagram; recorded `explain`, live and MCP runs, re-checked in CI.
 - Offline commands never load network code; only `capilinter/live/http.py` imports a network library.
+- Hardening from independent review: redirects refused (they would carry the token); token trimmed, validated and redacted from every error; `hash` refuses values that normalize to nothing; 10 MB / 5,000-event input limits; JSON errors for wrong MCP argument types; every check code proven triggerable by a test.
 
 
 ## 0.3.0 — Nov 2026

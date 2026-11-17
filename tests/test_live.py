@@ -51,6 +51,30 @@ class GuardTests(unittest.TestCase):
                 http.check_request(method, url)
 
 
+class RedirectTests(unittest.TestCase):
+    """urllib copies Authorization onto redirected requests; CAPILinter must never follow one."""
+
+    def test_redirect_is_refused_before_following(self):
+        import urllib.request
+
+        handler = next(h for h in http._OPENER.handlers if isinstance(h, urllib.request.HTTPRedirectHandler))
+        req = urllib.request.Request(
+            "https://graph.facebook.com/v25.0/dataset_quality?dataset_id=1",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+        for code in (301, 302, 303, 307, 308):
+            with self.subTest(code=code), self.assertRaises(http.RequestRefused) as ctx:
+                handler.redirect_request(req, io.BytesIO(), code, "Moved", {}, "https://evil.example/steal")
+            self.assertNotIn(TOKEN, str(ctx.exception))
+
+    def test_redirect_surfaces_as_refused_live_error(self):
+        def fake_open(request):
+            raise http.RequestRefused("Redirect to https://evil.example/steal refused")
+
+        with mock.patch.object(http, "_open", fake_open), self.assertRaises(http.RequestRefused):
+            read_dataset_quality("123", environ={"META_ACCESS_TOKEN": TOKEN})
+
+
 class TransportTests(unittest.TestCase):
     def setUp(self):
         os.environ.pop(http.FIXTURE_ENV, None)
@@ -58,13 +82,13 @@ class TransportTests(unittest.TestCase):
     def test_token_in_header_not_url(self):
         captured = {}
 
-        def fake_urlopen(request, timeout):
+        def fake_urlopen(request):
             captured["url"] = request.full_url
             captured["method"] = request.get_method()
             captured["auth"] = request.get_header("Authorization")
             return FakeResponse(json.dumps(load("dataset_quality_healthy.json")).encode())
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch.object(http, "_open", fake_urlopen):
             _report, code = read_dataset_quality("123", "my_agent", environ={"META_ACCESS_TOKEN": TOKEN})
         self.assertEqual(code, 0)
         self.assertEqual(captured["method"], "GET")
@@ -77,22 +101,22 @@ class TransportTests(unittest.TestCase):
     def test_http_error_body_is_reported_and_redacted(self):
         body = {"error": {"message": f"Bad token {TOKEN}", "code": 190}}
 
-        def fake_urlopen(request, timeout):
+        def fake_urlopen(request):
             raise urllib.error.HTTPError(
                 request.full_url, 400, "Bad Request", {}, io.BytesIO(json.dumps(body).encode())
             )
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen), self.assertRaises(http.LiveError) as ctx:
+        with mock.patch.object(http, "_open", fake_urlopen), self.assertRaises(http.LiveError) as ctx:
             read_dataset_quality("123", environ={"META_ACCESS_TOKEN": TOKEN})
         self.assertEqual(ctx.exception.kind, "api")
         self.assertNotIn(TOKEN, ctx.exception.message)
         self.assertIn("code 190", ctx.exception.message)
 
     def test_network_failure_is_api_error(self):
-        def fake_urlopen(request, timeout):
+        def fake_urlopen(request):
             raise urllib.error.URLError("unreachable")
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen), self.assertRaises(http.LiveError) as ctx:
+        with mock.patch.object(http, "_open", fake_urlopen), self.assertRaises(http.LiveError) as ctx:
             read_dataset_quality("123", environ={"META_ACCESS_TOKEN": TOKEN})
         self.assertEqual(ctx.exception.kind, "api")
 

@@ -31,7 +31,7 @@ This file is for AI agents (Claude Code, Cursor, others) asked to check a Meta C
 
 ## Working on this repo
 
-- Every issue code lives in `capilinter/checks.py`. Add a check there, emit it from `core.py` (or `live/quality.py`), add its row to `docs/meta-rules.md` with the Meta source, and add a test that triggers it. The acceptance tests fail if any of the four is missing.
+- Every issue code lives in `capilinter/checks.py`. Add a check there, emit it from `core.py` (or `live/quality.py`), add its row to `docs/meta-rules.md` with the Meta source, and add an input that triggers it to `RegistryCoverageTests` in `tests/test_review_v04.py`. Tests fail if a code is emitted but unregistered, registered but undocumented, or registered but never triggered.
 - Only `capilinter/live/http.py` may import a network library.
 - Gates: `ruff check . && ruff format --check . && mypy && bandit -q -r capilinter -c pyproject.toml`, then `python -m unittest discover -s tests`.
 - Regenerate recorded output after changing CLI text: `bash scripts/record_transcripts.sh && python scripts/render_readme_images.py` (with the installed wheel first on `PATH`, as CI does).

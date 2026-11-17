@@ -43,4 +43,4 @@
 | 7 [x] | Network isolation test | `tests/` | AC7 |
 | 8 [x] | Packaging: `mcp` extra, `capilinter-mcp` script, zero core deps | `pyproject.toml`, CI | AC8, AC9 |
 | 9 [x] | Docs: README Agentic section + layer diagram, AGENTS.md, rules table, recorded MCP call, CHANGELOG | `README.md`, `AGENTS.md`, `docs/images/agentic-stack.svg`, `docs/meta-rules.md` | brand gate |
-| 10 | Gates, CI, review by a different model; fix | — | AC10, AC11 |
+| 10 [x] | Gates, CI, review by a different model; fix | — | AC10, AC11 |

@@ -54,13 +54,20 @@ def _fail(kind: str, message: str) -> "CallToolResult":
 # Tool logic as plain functions, so it is testable without the MCP SDK.
 
 
-def audit_payload_impl(path: str | None = None, payload_json: Any = None) -> dict[str, Any]:
+def audit_payload_impl(path: Any = None, payload_json: Any = None) -> dict[str, Any]:
+    if path is not None and not isinstance(path, str):
+        raise ToolFailure("usage", "path must be a string: an absolute file path or ~/...")
+    if payload_json is not None and not isinstance(payload_json, (str, dict, list)):
+        raise ToolFailure("usage", "payload_json must be JSON text, a JSON object or a JSON array.")
     has_payload = payload_json is not None and payload_json != ""
     if bool(path) == has_payload:
         raise ToolFailure("usage", "Pass exactly one of path (absolute file path) or payload_json (the JSON text).")
     try:
         if path:
-            p = Path(path).expanduser()
+            try:
+                p = Path(path).expanduser()
+            except RuntimeError as exc:  # e.g. ~unknownuser
+                raise ToolFailure("usage", f"Cannot expand {path!r}: {exc}") from None
             if not p.is_absolute():
                 raise ToolFailure(
                     "refused",
@@ -77,7 +84,9 @@ def audit_payload_impl(path: str | None = None, payload_json: Any = None) -> dic
     return report
 
 
-def hash_value_impl(field: str, value: str, country_code: str = "1") -> dict[str, str]:
+def hash_value_impl(field: Any, value: Any, country_code: Any = "1") -> dict[str, str]:
+    if not isinstance(value, str) or not isinstance(country_code, str):
+        raise ToolFailure("usage", "value and country_code must be strings.")
     if field not in HASHABLE_FIELDS:
         raise ToolFailure("usage", f"field must be one of {', '.join(HASHABLE_FIELDS)}; got {field!r}.")
     try:
@@ -88,7 +97,9 @@ def hash_value_impl(field: str, value: str, country_code: str = "1") -> dict[str
     return {"field": field, "normalized": normalized, "sha256": digest}
 
 
-def list_checks_impl(severity: str | None = None, area: str | None = None) -> list[dict[str, str]]:
+def list_checks_impl(severity: Any = None, area: Any = None) -> list[dict[str, str]]:
+    if (severity is not None and not isinstance(severity, str)) or (area is not None and not isinstance(area, str)):
+        raise ToolFailure("usage", "severity and area must be strings when given.")
     if severity is not None and severity.upper() not in SEVERITIES:
         raise ToolFailure("usage", f"severity must be one of {', '.join(SEVERITIES)}; got {severity!r}.")
     if area is not None and area not in checks.AREAS:
@@ -100,19 +111,25 @@ def list_checks_impl(severity: str | None = None, area: str | None = None) -> li
     ]
 
 
-def explain_check_impl(code: str) -> dict[str, str]:
+def explain_check_impl(code: Any) -> dict[str, str]:
+    if not isinstance(code, str) or not code.strip():
+        raise ToolFailure("usage", "code must be a check code string, e.g. MISSING_EVENT_ID.")
     check = checks.CHECKS.get(code.strip().upper())
     if check is None:
         raise ToolFailure("usage", f"Unknown check code {code!r}. Call list_checks for the codes.")
     return check.to_dict()
 
 
-def read_dataset_quality_impl(dataset_id: str, agent_name: str | None = None) -> dict[str, Any]:
+def read_dataset_quality_impl(dataset_id: Any, agent_name: Any = None, strict: Any = False) -> dict[str, Any]:
+    if not isinstance(dataset_id, (str, int)) or isinstance(dataset_id, bool):
+        raise ToolFailure("usage", "dataset_id must be the numeric dataset (Pixel) ID.")
+    if agent_name is not None and not isinstance(agent_name, str):
+        raise ToolFailure("usage", "agent_name must be a string when given.")
     from .live.http import LiveError, RequestRefused
     from .live.quality import read_dataset_quality
 
     try:
-        report, _ = read_dataset_quality(dataset_id, agent_name)
+        report, _ = read_dataset_quality(str(dataset_id), agent_name, bool(strict))
     except LiveError as exc:
         raise ToolFailure(exc.kind, exc.message) from None
     except RequestRefused as exc:
@@ -126,7 +143,9 @@ def _run(fn: Any, *args: Any, **kwargs: Any) -> "str | CallToolResult":
     except ToolFailure as exc:
         return _fail(exc.kind, exc.message)
     except Exception as exc:  # never crash the server on one bad call
-        return _fail("internal", f"{type(exc).__name__}: {exc}")
+        from .live.http import redact_env_token
+
+        return _fail("internal", redact_env_token(f"{type(exc).__name__}: {exc}"))
 
 
 def build_server() -> "MCPServer":
@@ -139,9 +158,7 @@ def build_server() -> "MCPServer":
     live_read = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=True)
 
     @server.tool(annotations=read_only, structured_output=False)
-    def audit_payload(
-        path: str | None = None, payload_json: str | dict[str, Any] | list[Any] | None = None
-    ) -> "str | CallToolResult":
+    def audit_payload(path: Any = None, payload_json: Any = None) -> "str | CallToolResult":
         """Check a Meta Conversions API payload offline. Pass exactly one: `path` (absolute, or ~/...) to a JSON
         file, or `payload_json` (the JSON text or object). Accepts one event, a list of events, or a {"data": [...]} body.
         Returns the CLI's JSON report (schema_version 1): per-event issues with code, severity, field, fix and
@@ -149,30 +166,33 @@ def build_server() -> "MCPServer":
         return _run(audit_payload_impl, path, payload_json)
 
     @server.tool(annotations=read_only, structured_output=False)
-    def hash_value(field: str, value: str, country_code: str = "1") -> "str | CallToolResult":
+    def hash_value(field: Any = None, value: Any = None, country_code: Any = "1") -> "str | CallToolResult":
         """Normalize and SHA-256 hash one user_data value the way Meta documents. `field` is one of
         em, ph, fn, ln, ct, st, zp, country, ge, db. `country_code` is used for national phone numbers.
         Returns {field, normalized, sha256}, or a refusal when the value cannot be normalized without guessing."""
         return _run(hash_value_impl, field, value, country_code)
 
     @server.tool(annotations=read_only, structured_output=False)
-    def list_checks(severity: str | None = None, area: str | None = None) -> "str | CallToolResult":
+    def list_checks(severity: Any = None, area: Any = None) -> "str | CallToolResult":
         """List CAPILinter's check codes with severity, area, title, why, fix and Meta source. Optional filters:
         severity (ERROR or WARNING) and area (required, timestamps, dedup, hashing, browser_ids, live)."""
         return _run(list_checks_impl, severity, area)
 
     @server.tool(annotations=read_only, structured_output=False)
-    def explain_check(code: str) -> "str | CallToolResult":
+    def explain_check(code: Any = None) -> "str | CallToolResult":
         """Explain one check code: why it matters, how to fix it, and the Meta documentation page to cite."""
         return _run(explain_check_impl, code)
 
     @server.tool(annotations=live_read, structured_output=False)
-    def read_dataset_quality(dataset_id: str, agent_name: str | None = None) -> "str | CallToolResult":
+    def read_dataset_quality(
+        dataset_id: Any = None, agent_name: Any = None, strict: Any = False
+    ) -> "str | CallToolResult":
         """Read Meta's Dataset Quality API for a dataset (Pixel) ID, website events, read-only (GET only, enforced
         in code). Reports Meta's Event Match Quality, match-key coverage, diagnostics, event coverage, dedup-key
         coverage and data freshness per event, and flags EMQ below 6.0, Meta diagnostics, coverage below goal and
-        server events missing event_id. Needs META_ACCESS_TOKEN in the server's environment. Fixture-verified."""
-        return _run(read_dataset_quality_impl, dataset_id, agent_name)
+        server events missing event_id. With strict=true, flags set passed=false. Needs META_ACCESS_TOKEN in the
+        server's environment. Fixture-verified."""
+        return _run(read_dataset_quality_impl, dataset_id, agent_name, strict)
 
     return server
 

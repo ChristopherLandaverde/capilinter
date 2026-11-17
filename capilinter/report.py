@@ -5,6 +5,7 @@ rendered from the same dict, so every surface reports the same verdicts.
 """
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,9 @@ from .core import find_duplicate_event_ids, validate_capi_payload
 from .emq import calculate_emq_score
 
 SCHEMA_VERSION = 1
+# CAPILinter's own resource limits (not Meta rules): keep an agent call bounded.
+MAX_FILE_BYTES = 10 * 1024 * 1024
+MAX_EVENTS = 5000
 
 
 class InputError(Exception):
@@ -26,6 +30,8 @@ class InputError(Exception):
 def load_json_file(path: Path) -> Any:
     if not path.is_file():
         raise InputError(f"Not a readable file: {path}")
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise InputError(f"{path} is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB; split it into smaller files.")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError, OSError) as exc:
@@ -51,7 +57,10 @@ def extract_events(data: Any) -> list[Any] | None:
 
 
 def _field(event: Any, key: str) -> Any:
-    return event.get(key) if isinstance(event, dict) else None
+    value = event.get(key) if isinstance(event, dict) else None
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)  # keep the report strict JSON
+    return value
 
 
 def build_report(data: Any, label: str, strict: bool = False) -> tuple[dict[str, Any], int]:
@@ -63,6 +72,10 @@ def build_report(data: Any, label: str, strict: bool = False) -> tuple[dict[str,
     events = extract_events(data)
     if events is None:
         raise InputError(f'{label} is not a CAPI payload (expected an event object, a list, or {{"data": [...]}}).')
+    if len(events) > MAX_EVENTS:
+        raise InputError(
+            f"{label} has {len(events)} events; CAPILinter checks at most {MAX_EVENTS} per file. Split it."
+        )
     if not events:
         return (
             {

@@ -135,6 +135,11 @@ def _live_quality_command(dataset_id: str, agent_name: str | None, strict: bool,
     except RequestRefused as exc:
         print(f"[ERROR] Request refused by the read-only guard: {exc}", file=sys.stderr)
         return 2
+    except Exception as exc:  # never show a traceback that could carry the token
+        from .live.http import redact_env_token
+
+        print(f"[ERROR] {redact_env_token(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+        return 2
     if as_json:
         _print_json(report)
     else:

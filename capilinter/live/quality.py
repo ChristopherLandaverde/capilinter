@@ -29,19 +29,24 @@ def _issue(code: str, message: str, field: str) -> dict[str, str]:
     }
 
 
+def _list(obj: Any) -> list[Any]:
+    return obj if isinstance(obj, list) else []
+
+
 def _pct(obj: Any) -> Any:
     return obj.get("percentage") if isinstance(obj, dict) else None
 
 
 def _event(raw: Mapping[str, Any]) -> dict[str, Any]:
-    emq = raw.get("event_match_quality") or {}
+    emq = raw.get("event_match_quality")
+    emq = emq if isinstance(emq, dict) else {}
     score = emq.get("composite_score")
     diagnostics = [
         {
             key: d.get(key)
             for key in ("name", "description", "solution", "percentage", "affected_event_count", "total_event_count")
         }
-        for d in emq.get("diagnostics") or []
+        for d in _list(emq.get("diagnostics"))
         if isinstance(d, dict)
     ]
     coverage_raw = raw.get("event_coverage")
@@ -57,7 +62,7 @@ def _event(raw: Mapping[str, Any]) -> dict[str, Any]:
             "server_percentage": _pct(d.get("server_events_with_dedupe_key")),
             "overall_browser_coverage": _pct(d.get("overall_browser_coverage_from_dedupe_key")),
         }
-        for d in raw.get("dedupe_key_feedback") or []
+        for d in _list(raw.get("dedupe_key_feedback"))
         if isinstance(d, dict)
     ]
     freshness_raw = raw.get("data_freshness")
@@ -107,7 +112,7 @@ def _event(raw: Mapping[str, Any]) -> dict[str, Any]:
         "emq_score": score,
         "match_keys": [
             {"identifier": m.get("identifier"), "coverage": _pct(m.get("coverage"))}
-            for m in emq.get("match_key_feedback") or []
+            for m in _list(emq.get("match_key_feedback"))
             if isinstance(m, dict)
         ],
         "diagnostics": diagnostics,
@@ -147,7 +152,12 @@ def read_dataset_quality(
     dataset_id = str(dataset_id).strip()
     if not dataset_id.isdigit():
         raise LiveError("usage", f"dataset_id must be the numeric dataset (Pixel) ID, got {dataset_id!r}.")
-    token = env.get(TOKEN_ENV, "")
+    token = env.get(TOKEN_ENV, "").strip()
+    if token and not all(33 <= ord(ch) <= 126 for ch in token):
+        raise LiveError(
+            "credentials",
+            f"{TOKEN_ENV} contains spaces or control characters inside it. Check the value; it is not shown here.",
+        )
     if not token:
         raise LiveError(
             "credentials",

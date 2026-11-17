@@ -78,7 +78,7 @@ If the app can't find `capilinter-mcp` on its `PATH`, use the absolute path from
 
 The `claude mcp add` line was run against the installed 0.4.0 wheel and `claude mcp list` reported the server as connected. The Claude Desktop and Cursor snippets use the same command but weren't run.
 
-Bad input (a relative path, a missing file, both a path and inline JSON, an unknown field or code, a missing token) comes back as a tool error, `{"error": {"kind": "usage" | "refused" | "credentials" | "api" | "internal", "message": "..."}}`, not a crash. `refused` means the tool declined rather than guess: a relative path, a value it cannot normalize, or a request the read-only guard stopped before sending. A [recorded session](docs/transcripts/13-mcp-session.txt) against the installed server shows `tools/list` and three calls; CI re-records it and fails on any difference.
+Bad input (a relative path, a missing file, both a path and inline JSON, an unknown field or code, a missing token) comes back as a tool error, `{"error": {"kind": "usage" | "refused" | "credentials" | "api" | "internal", "message": "..."}}`, not a crash. `refused` means the tool declined rather than guess: a relative path, a value it cannot normalize, or a request the read-only guard stopped before sending. The one exception is a call to a tool name that doesn't exist, which the MCP SDK answers with plain text before CAPILinter sees it. A [recorded session](docs/transcripts/13-mcp-session.txt) against the installed server shows `tools/list` and three calls; CI re-records it and fails on any difference.
 
 **Where MCP results go:** every tool result goes to the agent that called it, and so to the model behind it, under that agent's data terms. That includes payload contents you pass in. Hash PII before you hand a payload to an agent if that matters to you.
 
@@ -90,12 +90,12 @@ capilinter live quality --dataset-id 123456789
 capilinter live quality --dataset-id 123456789 --json --strict
 ```
 
-Reads `GET https://graph.facebook.com/v25.0/dataset_quality` for website events and reports Meta's own numbers per event: Event Match Quality, match-key coverage, Meta's diagnostics, event coverage against Meta's goal, dedup-key coverage and data freshness. It flags EMQ below the 6.0 Meta recommends, each Meta diagnostic, coverage below goal and server events missing `event_id`. The token needs at least Partial access → Use events dataset on the dataset. A request guard (`capilinter/live/http.py`) allows only that one `GET`; any other method, host or path is refused before a connection opens. See the [recorded run](docs/transcripts/12-live-quality.txt) on a synthetic response.
+Reads `GET https://graph.facebook.com/v25.0/dataset_quality` for website events and reports Meta's own numbers per event: Event Match Quality, match-key coverage, Meta's diagnostics, event coverage against Meta's goal, dedup-key coverage and data freshness. It flags EMQ below the 6.0 Meta recommends, each Meta diagnostic, coverage below goal and server events missing `event_id`. The token needs at least Partial access → Use events dataset on the dataset. A request guard (`capilinter/live/http.py`) allows only that one `GET`; any other method, host or path is refused before a connection opens, and redirects are never followed, since following one would carry the token to another host. The token is trimmed of surrounding whitespace and redacted from every error. See the [recorded run](docs/transcripts/12-live-quality.txt) on a synthetic response.
 
 ## Where it sits
 
 <p align="center">
-  <img src="docs/images/pipeline.svg" width="880" alt="The browser pixel sends an event with an event_id to Meta. Your server or sGTM container builds the Conversions API payload for the same event. CAPILinter checks that payload offline against 21 rules traced to Meta's docs. Exit 0: send it, and Meta deduplicates it against the pixel event by event_name and event_id. Exit 1: a fix list with the code, the field and the fix. CAPILinter never sends events.">
+  <img src="docs/images/pipeline.svg" width="880" alt="The browser pixel sends an event with an event_id to Meta. Your server or sGTM container builds the Conversions API payload for the same event. CAPILinter checks that payload offline against 22 offline checks traced to Meta's docs. Exit 0: send it, and Meta deduplicates it against the pixel event by event_name and event_id. Exit 1: a fix list with the code, the field and the fix. CAPILinter never sends events.">
 </p>
 
 ## Who it's for
@@ -204,6 +204,7 @@ A parameter counts only when its value is valid. Grades: EXCELLENT ≥ 8.5 · GO
 - Live mode is fixture-verified only: it has not been run against a real Meta dataset or token. It sends the token as an `Authorization: Bearer` header rather than the `access_token` query parameter in Meta's examples, to keep it out of URLs; that form is not yet verified against Meta's API.
 - Rules follow Meta's docs as fetched on Nov 17, 2026. Meta can change them; [docs/meta-rules.md](docs/meta-rules.md) records what was checked.
 - Meta CAPI only. LinkedIn, TikTok and other conversion APIs use different schemas.
+- `inspect` and `audit_payload` read at most 10 MB and 5,000 events per file. These are CAPILinter's own limits, to keep an agent call bounded, not Meta rules. Split bigger logs.
 - `hash` does not map names to codes: `United States` and `California` are refused or kept as words. Send `us` and `ca`.
 - Ambiguous dates such as `03/04/1997` are read month-first, following Meta's own example. Send `YYYY-MM-DD` to avoid guessing.
 - Meta requires only "at least one" `user_data` parameter, so an event with just an IP address passes. Its estimated match quality will be POOR.
@@ -219,7 +220,7 @@ A parameter counts only when its value is valid. Grades: EXCELLENT ≥ 8.5 · GO
 
 ```bash
 pip install -e ".[dev]"
-python -m unittest discover -s tests -v       # 86 unit and acceptance tests
+python -m unittest discover -s tests -v       # 103 unit and acceptance tests
 ruff check . && ruff format --check . && mypy && bandit -q -r capilinter -c pyproject.toml
 bash scripts/record_transcripts.sh            # regenerate docs/transcripts
 python scripts/render_readme_images.py        # regenerate docs/images/fix-demo.svg

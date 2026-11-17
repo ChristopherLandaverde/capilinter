@@ -13,3 +13,4 @@
 | 7 Network isolation | done | found: offline CLI loaded network code → fixed; AC7 passes |
 | 8 Packaging | done | core wheel runs without extra; v0.4 acceptance 20/20 against installed wheel, none skipped |
 | 9 Docs | done | Agentic section, layer diagram, AGENTS.md, rules table, recorded MCP session; `claude mcp add` → Connected |
+| 10 Independent review (different model) | done | 11 findings, 2 blocking (token leak on newline token; redirects carry token). All fixed with tests first; 103 tests |
