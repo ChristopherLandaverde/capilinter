@@ -317,5 +317,65 @@ class TestMetaDocumentedExamples(unittest.TestCase):
         self.assertNotIn("NO_CUSTOMER_INFORMATION", codes(validate_capi_payload(event, now=NOW)))
 
 
+class TestSecondReview(unittest.TestCase):
+    """Cases from the v0.2.0 independent review (see DECISIONS.md)."""
+
+    def test_fresh_valid_event_passes_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            event = load_event("valid_payload.json")
+            event["event_time"] = int(__import__("time").time()) - 60
+            path = write_tmp(tmp, "fresh.json", {"data": [event]})
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                self.assertEqual(inspect_payload(path, strict=True), 0)
+            self.assertIn("✓ VERIFIED", buf.getvalue())
+
+    def test_verified_not_shown_beside_warnings(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            inspect_payload(FIXTURES / "valid_payload.json")
+        self.assertNotIn("✓ VERIFIED", buf.getvalue())
+        self.assertIn("no errors, 1 warning", buf.getvalue())
+
+    def test_national_trunk_zero_needs_country_code(self):
+        with self.assertRaises(ValueError):
+            normalize_phone("07911 123456")
+        self.assertEqual(normalize_phone("07911 123456", "44"), "447911123456")
+        self.assertEqual(normalize_phone("(34) 99123-4567", "55"), "5534991234567")
+        self.assertEqual(normalize_phone("+55 34 99123-4567"), "5534991234567")
+        self.assertEqual(normalize_phone("(650)555-1212"), "16505551212")
+        self.assertEqual(normalize_phone("1 650 555 1212"), "16505551212")
+
+    def test_combining_marks_kept(self):
+        self.assertEqual(normalize_field("fn", "जॉन"), "जॉन")
+        self.assertEqual(normalize_field("fn", "ก้อง"), "ก้อง")
+
+    def test_impossible_dates_refused(self):
+        for raw in ("02/30/1997", "1997-02-29", "04/31/2001"):
+            with self.assertRaises(ValueError, msg=raw):
+                normalize_field("db", raw)
+        self.assertEqual(normalize_field("db", "2/29/2000"), "20000229")
+
+    def test_gender_accepts_only_known_values(self):
+        for raw, expected in (("F", "f"), ("female", "f"), ("Male", "m"), ("m", "m")):
+            self.assertEqual(normalize_field("ge", raw), expected)
+        for raw in ("fluid", "man", "x"):
+            with self.assertRaises(ValueError, msg=raw):
+                normalize_field("ge", raw)
+
+    def test_fb_cookie_requires_ms_timestamp(self):
+        event = load_event("valid_payload.json")
+        event["user_data"]["fbc"] = "fb.1.1731600000.AbCdEf"
+        self.assertIn("MALFORMED_FBC", codes(validate_capi_payload(event, now=NOW)))
+
+    def test_json_mode_reports_empty_payload_as_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+                code = inspect_payload(write_tmp(tmp, "e.json", {"data": []}), as_json=True)
+            self.assertEqual(code, 1)
+            self.assertIs(json.loads(buf.getvalue())["passed"], False)
+
+
 if __name__ == "__main__":
     unittest.main()

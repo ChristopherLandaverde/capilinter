@@ -43,8 +43,8 @@ Run it in CI on payload fixtures, on sGTM request logs, or on a webhook body bef
 
 ## Evidence
 
-- **[21 rules](docs/meta-rules.md)** traced to Meta's docs, each with its source. Five normalization rules disagreed with the docs in v0.1 and are fixed in v0.2 ([changelog](CHANGELOG.md)).
-- **48 tests** (unit and acceptance) pass on Python 3.10–3.14. The acceptance tests were written from the [spec](SPEC.md) before the code. They run twice in CI: against the source, and against the built wheel installed in a clean environment.
+- **[21 rules](docs/meta-rules.md)** traced to Meta's docs, each with its source. Six normalization rules disagreed with the docs in v0.1 and are fixed in v0.2 ([changelog](CHANGELOG.md)).
+- **56 tests** (unit and acceptance) pass on Python 3.10–3.14, none skipped. The installed-wheel run repeats the acceptance tests and skips only the 4 lint and typecheck checks, which need the source tree. The acceptance tests were written from the [spec](SPEC.md) before the code. They run twice in CI: against the source, and against the built wheel installed in a clean environment.
 - **CI gates:** ruff, ruff format, mypy `--strict`, bandit.
 - **[Recorded runs](docs/transcripts/)** of every primary flow. CI regenerates them from the installed wheel and fails if any line changes.
 
@@ -62,6 +62,7 @@ capi-validator inspect payload.json --strict   # warnings fail the run
 capi-validator inspect payload.json --json     # machine-readable report
 capi-validator hash "  John_Smith@gmail.com "   # sha256 of john_smith@gmail.com
 capi-validator hash "(650)555-1212" --phone     # sha256 of 16505551212
+capi-validator hash "07911 123456" --phone --country-code 44   # sha256 of 447911123456
 capi-validator hash "2/16/1997" --field db      # sha256 of 19970216
 ```
 
@@ -93,7 +94,7 @@ Staleness is a warning because the check uses the clock at audit time, so replay
 | `client_ip_address` | 0.5 |
 | `client_user_agent` | 0.5 |
 
-A parameter earns its weight only when its value is valid. Hashed fields must be lowercase SHA-256, and `fbc`/`fbp` must match `fb.<0-2>.<timestamp>.<id>`.
+A parameter earns its weight only when its value is valid. Hashed fields must be lowercase SHA-256, and `fbc`/`fbp` must match `fb.<0-2>.<13-digit ms timestamp>.<id>`.
 
 Grades: EXCELLENT ≥ 8.5 · GOOD ≥ 7.0 · FAIR ≥ 5.0 · POOR below 5.0.
 

@@ -23,22 +23,33 @@ def normalize_phone(phone: str, default_country_code: str = "1") -> str:
     - Fullwidth and other Unicode digits are folded to ASCII.
     - A trailing extension (x12, ext. 12, #12) is dropped.
     - A '(0)' trunk prefix is dropped.
-    - A '00' international prefix is treated like '+'.
-    - A 10-digit national number without '+' or '00' gets the default
-      country code (US/Canada by default).
+    - A '+' or '00' prefix means the number already carries its country code.
+    - Otherwise the number is national: a leading trunk '0' is dropped and
+      default_country_code is prepended. With the default code '1' (US/Canada)
+      only 10-digit numbers get it, and a leading '0' raises ValueError,
+      because no US number starts with 0 and guessing the country would
+      produce a hash that never matches.
     """
     raw = _EXTENSION.sub("", unicodedata.normalize("NFKC", phone).strip())
     raw = raw.replace("(0)", "")  # national trunk prefix, e.g. +44 (0)20
     international = raw.startswith("+") or raw.startswith("00")
-    digits = re.sub(r"[^0-9]", "", raw).lstrip("0")
-    if not international and len(digits) == 10 and default_country_code:
-        digits = default_country_code + digits
-    return digits
+    digits = re.sub(r"[^0-9]", "", raw)
+    if international:
+        return digits.lstrip("0")
+    national = digits.lstrip("0")
+    if default_country_code == "1":
+        if national != digits:
+            raise ValueError(
+                f"{phone!r} starts with a national trunk 0, so it is not a US number. "
+                "Pass its country code (e.g. --country-code 44) or write it with '+'."
+            )
+        return "1" + national if len(national) == 10 else national
+    return default_country_code + national if default_country_code else national
 
 
 def _letters_only(text: str) -> str:
-    """Lowercase letters only; keeps UTF-8 letters such as 'é' (Meta: no punctuation, digits or spaces)."""
-    return "".join(ch for ch in text if ch.isalpha())
+    """Letters only, keeping UTF-8 letters and their combining marks ('é', 'जॉन'); no digits, punctuation or spaces."""
+    return "".join(ch for ch in text if ch.isalpha() or unicodedata.category(ch).startswith("M"))
 
 
 def _normalize_dob(text: str) -> str:
@@ -53,10 +64,13 @@ def _normalize_dob(text: str) -> str:
         month, day = (second, first) if int(first) > 12 >= int(second) else (first, second)
     else:
         raise ValueError(f"db must be a date such as 1997-02-16 or 2/16/1997, got {text!r}")
-    y, m, d = int(year), int(month), int(day)
-    if not (1900 <= y <= datetime.date.today().year and 1 <= m <= 12 and 1 <= d <= 31):
-        raise ValueError(f"db is out of range (year 1900-now, month 01-12, day 01-31): {text!r}")
-    return f"{y:04d}{m:02d}{d:02d}"
+    try:
+        date = datetime.date(int(year), int(month), int(day))
+    except ValueError:
+        raise ValueError(f"db is not a real calendar date: {text!r}") from None
+    if not 1900 <= date.year <= datetime.date.today().year:
+        raise ValueError(f"db year must be between 1900 and this year: {text!r}")
+    return date.strftime("%Y%m%d")
 
 
 def normalize_field(key: str, value: str) -> str:
@@ -77,9 +91,10 @@ def normalize_field(key: str, value: str) -> str:
         compact = re.sub(r"[\s\-]", "", text)
         return compact[:5] if compact[:5].isdigit() else compact
     if key == "ge":
-        if text[:1] not in ("f", "m"):
-            raise ValueError(f"ge must start with 'f' or 'm', got {value!r}")
-        return text[:1]
+        genders = {"f": "f", "female": "f", "m": "m", "male": "m"}
+        if text not in genders:
+            raise ValueError(f"ge must be f, m, female or male, got {value!r}")
+        return genders[text]
     if key == "db":
         return _normalize_dob(text)
     raise ValueError(f"Unsupported field: {key}")

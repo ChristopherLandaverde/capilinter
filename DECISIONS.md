@@ -33,3 +33,11 @@ An independent review by a different model found 12 issues. Each was reproduced 
 - **Text transcripts instead of screenshots.** The output is terminal text, so a byte-exact transcript is stronger evidence than a picture. CI regenerates them and fails on any difference.
 - **Single build agent for code changes.** The tasks touched the same files (`core.py`, `hashing.py`, `cli.py`), so parallel worktrees would have produced merge conflicts, not speed. Independence comes from the separate acceptance-test agent and the final review by a different model.
 - **Repo topics and homepage not set.** The GitHub proxy in this session refuses repository-settings writes (HTTP 403). One `gh repo edit` command for Christopher.
+
+### Second independent review (v0.2.0)
+
+A different model reviewed `build/standard`; no high-severity findings. Each finding was reproduced before acting.
+
+- **Fixed:** national `0…` phone numbers no longer get a US `1` (refused under the default code, prepended with `--country-code` otherwise); combining marks kept in names and cities; impossible dates refused; `ge` limited to `f m female male`; `fbc`/`fbp` require a 13-digit ms timestamp (fixture updated); `✓ VERIFIED` no longer printed beside warnings; `--strict` pass on a fresh valid event now tested; `--json` reports empty payloads as JSON; the CI test matrix installs dev tools so AC8 runs there instead of skipping; doc counts corrected.
+- **Declined:** requiring identifiers beyond Meta's literal "at least one user_data parameter". The tool follows the doc; the match-quality score shows the weakness.
+- **Declined:** mapping US state names to codes. A lookup table for one field is not worth it; documented as a known limit.

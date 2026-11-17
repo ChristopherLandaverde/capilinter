@@ -51,7 +51,10 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
         )
         return 2
     if not events:
-        print(f"[ERROR] {file_path} contains no events.", file=sys.stderr)
+        message = f"{file_path} contains no events."
+        print(f"[ERROR] {message}", file=sys.stderr)
+        if as_json:
+            print(json.dumps({"file": str(file_path), "passed": False, "error": message, "events": []}, indent=2))
         return 1
 
     batch_issues = find_duplicate_event_ids(events)
@@ -85,8 +88,11 @@ def inspect_payload(file_path: Path, strict: bool = False, as_json: bool = False
         print(
             f"\n[{idx}/{len(events)}] {_field(event, 'event_name', 'UNKNOWN')}  event_id={_field(event, 'event_id', 'MISSING')}"
         )
-        if validation.is_valid:
+        if validation.is_valid and not validation.warnings:
             print("  ✓ VERIFIED  schema, hashing, and dedup-key checks passed")
+        elif validation.is_valid:
+            count = len(validation.warnings)
+            print(f"  □ OBSERVED  no errors, {count} warning{'s' if count != 1 else ''}")
         for err in validation.errors:
             print(f"  × ERROR     {err.code}: {err.message}")
         for warn in validation.warnings:

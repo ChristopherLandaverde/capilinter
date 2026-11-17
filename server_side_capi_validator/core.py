@@ -34,7 +34,7 @@ VALID_ACTION_SOURCES = {
 HASHED_KEYS = ("em", "ph", "fn", "ln", "ge", "db", "ct", "st", "zp", "country")
 
 # fb.<subdomain index 0-2>.<creation time in ms>.<fbclid or random number>
-FB_COOKIE = re.compile(r"^fb\.[0-2]\.\d{10,13}\.\S+$")
+FB_COOKIE = re.compile(r"^fb\.[0-2]\.\d{13}\.\S+$")
 
 
 @dataclass

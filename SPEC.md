@@ -1,12 +1,12 @@
 # SPEC — bring server-side-capi-validator to the foco-build standard
 
-`Build spec / v0.2.0` · Nov 2026 · Branch `build/standard` · Status: awaiting approval
+`Build spec / v0.2.0` · Nov 2026 · Branch `build/standard` · Status: approved Nov 16, 2026
 
 Scope gate: this is a new public tool beside the current loop (AdLinter → focosys.io). Christopher asked to proceed on Nov 16, 2026; treated as an override.
 
 ## Problem
 
-v0.1.0 works (32 tests, CI green on Python 3.10–3.14), but it was built before the build process. Nothing ties its rules to Meta's published requirements, CI runs no lint, typecheck or security scan, no built artifact is installed and exercised, and the README and CLI fail parts of the brand ship gate (the `!` glyph, no number as evidence, no slash label or diagram). Someone who finds the repo has no evidence they can check for why they should trust its verdicts.
+v0.1.0 worked (32 tests at spec time, CI green on Python 3.10–3.14), but it was built before the build process. Nothing ties its rules to Meta's published requirements, CI runs no lint, typecheck or security scan, no built artifact is installed and exercised, and the README and CLI fail parts of the brand ship gate (the `!` glyph, no number as evidence, no slash label or diagram). Someone who finds the repo has no evidence they can check for why they should trust its verdicts.
 
 ## Who uses it, and what they decide
 
